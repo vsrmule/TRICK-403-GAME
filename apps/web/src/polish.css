@@ -1375,6 +1375,9 @@ a.btn {
   .captions {
     grid-template-columns: minmax(0, 1fr) auto;
     height: calc(4.6rem + env(safe-area-inset-top, 0px));
+    /* Keep the caption text below the phone's status bar (notch / full-screen app). */
+    box-sizing: border-box;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
     align-items: center;
     overflow: visible;
   }
@@ -1429,6 +1432,7 @@ a.btn {
 @media (orientation: landscape) and (max-height: 560px) {
   .captions {
     height: auto;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
   }
   .cap-chans {
     position: static;
