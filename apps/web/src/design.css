@@ -1,0 +1,1057 @@
+/* =====================================================================
+   Trick 304 design layer — premium night table.
+   Built only on tokens from theme.css. Loaded after styles.css/table.css.
+   ===================================================================== */
+
+/* ---------- Base & type ---------- */
+html,
+body {
+  background: radial-gradient(120% 80% at 50% -10%, var(--c-bg-glow), var(--c-bg) 60%) fixed var(--c-bg);
+  color: var(--c-text);
+}
+body {
+  font-family: var(--font-body);
+  font-size: var(--fs-m);
+  line-height: 1.5;
+}
+h1,
+h2,
+h3,
+.intro-title,
+.room-code,
+.score-n,
+.stepper-value,
+.moment-title,
+.mode-title {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+h1 {
+  font-size: var(--fs-xxl);
+  font-weight: 800;
+}
+h2 {
+  font-size: var(--fs-l);
+  font-weight: 700;
+}
+h3 {
+  font-size: var(--fs-m);
+  font-weight: 700;
+}
+.hint {
+  font-size: var(--fs-s);
+  color: var(--c-muted);
+}
+.app {
+  padding-bottom: 7.5rem; /* room for the caption strip */
+}
+
+/* ---------- Focus: visible, 3:1 against every surface ---------- */
+:focus-visible {
+  outline: 3px solid var(--c-focus);
+  outline-offset: 3px;
+}
+.mode:focus-within {
+  outline: 3px solid var(--c-focus);
+  outline-offset: 3px;
+}
+
+/* ---------- Panels ---------- */
+.panel {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c-surface-2) 55%, var(--c-surface)), var(--c-surface));
+  border: var(--line) solid var(--c-border);
+  border-radius: var(--radius-l);
+  padding: var(--space-4) var(--space-5);
+  box-shadow: var(--shadow-1);
+}
+
+/* ---------- Buttons: default / focused / pressed / disabled (with reason) / error ---------- */
+.btn {
+  min-height: var(--target);
+  min-width: var(--target);
+  border-radius: var(--radius-m);
+  border: var(--line) solid var(--c-border-strong);
+  background: var(--c-surface-2);
+  color: var(--c-text);
+  font-family: var(--font-body);
+  font-weight: 700;
+  transition:
+    transform var(--dur-1) var(--ease),
+    background var(--dur-1);
+}
+.btn:hover {
+  border-color: var(--c-accent-edge);
+}
+.btn:active:not(:disabled):not([aria-disabled='true']) {
+  transform: translateY(1px);
+  background: color-mix(in srgb, var(--c-surface-2) 80%, var(--c-bg));
+}
+.btn.primary {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c-accent) 88%, white), var(--c-accent));
+  color: var(--c-on-accent);
+  border-color: var(--c-accent-edge);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--c-accent) 30%, transparent);
+}
+.btn.primary:active:not(:disabled) {
+  background: var(--c-accent);
+}
+.btn.warn {
+  background: transparent;
+  color: var(--c-accent-ink);
+  border-color: var(--c-accent-edge);
+}
+.btn.ghost {
+  background: transparent;
+  border-color: var(--c-border);
+}
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-style: dashed; /* disabled is shown by shape, not only by fading */
+}
+.btn.error {
+  border-color: var(--c-bad);
+  color: var(--c-bad);
+}
+.row {
+  gap: var(--target-gap);
+}
+:root[data-theme='high-contrast'] .btn,
+:root[data-theme='high-contrast'] .panel,
+:root[data-theme='high-contrast'] .input {
+  border-width: 3px;
+}
+
+/* ---------- Inputs ---------- */
+.input {
+  background: var(--c-bg);
+  color: var(--c-text);
+  border: var(--line) solid var(--c-border-strong);
+  border-radius: var(--radius-m);
+  font-family: var(--font-body);
+  font-size: var(--fs-m);
+}
+input[type='range'] {
+  accent-color: var(--c-accent);
+}
+
+/* ---------- Team badges: colour + shape + text ---------- */
+.team-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-weight: 700;
+}
+.team-badge svg {
+  flex: none;
+  width: 0.85em;
+  height: 0.85em;
+  stroke: var(--c-bg);
+  stroke-width: 1;
+}
+.team-badge.team-0 svg {
+  fill: var(--c-team-a);
+}
+.team-badge.team-1 svg {
+  fill: var(--c-team-b);
+}
+
+/* ---------- Cards ---------- */
+.card-face {
+  position: relative;
+  display: block;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: calc(var(--card-w) * 0.14);
+  background: var(--c-card);
+  border: var(--line) solid var(--c-card-edge);
+  color: var(--c-card-ink);
+  font-family: var(--font-body);
+  flex: none;
+  box-shadow: var(--shadow-1);
+}
+.card-face.suit-S {
+  color: var(--c-suit-spades);
+}
+.card-face.suit-H {
+  color: var(--c-suit-hearts);
+}
+.card-face.suit-C {
+  color: var(--c-suit-clubs);
+}
+.card-face.suit-D {
+  color: var(--c-suit-diamonds);
+}
+.card-face .corner {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  line-height: 0.95;
+}
+.card-face .corner b {
+  font-size: calc(var(--card-w) * 0.27);
+  font-weight: 700;
+}
+.card-face .corner i {
+  font-style: normal;
+  font-size: calc(var(--card-w) * 0.22);
+}
+.card-face .corner em {
+  font-style: normal;
+  font-weight: 700;
+  font-size: calc(var(--card-w) * 0.14);
+  margin-top: 1px;
+}
+.card-face .tl {
+  top: calc(var(--card-w) * 0.06);
+  left: calc(var(--card-w) * 0.08);
+}
+.card-face .br {
+  bottom: calc(var(--card-w) * 0.06);
+  right: calc(var(--card-w) * 0.08);
+  transform: rotate(180deg);
+}
+.card-face .pip {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--card-w) * 0.52);
+  opacity: 0.95;
+}
+.card-face .pts-badge {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--card-w) * 0.05);
+  transform: translateX(-50%);
+  font-size: calc(var(--card-w) * 0.15);
+  font-weight: 700;
+  color: var(--c-card-ink);
+  background: color-mix(in srgb, var(--c-card-ink) 9%, transparent);
+  border-radius: 999px;
+  padding: 0 0.4em;
+}
+.card-face.small {
+  --card-w: 2.2rem;
+  --card-h: 3.1rem;
+}
+/* Small cards keep the top corner (rank, suit, letter) and drop the rest. */
+.card-face.small .br,
+.card-face.small .pts-badge,
+.card-face.small .pip {
+  display: none;
+}
+.card-face.small .tl {
+  inset: 0;
+  place-content: center;
+}
+.card-face.small .corner b {
+  font-size: 1rem;
+}
+.card-face.small .corner i {
+  font-size: 0.95rem;
+}
+.card-face.small .corner em {
+  font-size: 0.6rem;
+}
+
+.card-back {
+  display: inline-grid;
+  place-items: center;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: calc(var(--card-w) * 0.14);
+  border: var(--line) solid var(--c-card);
+  background: repeating-linear-gradient(45deg, var(--c-back-1) 0 6px, var(--c-back-2) 6px 12px);
+  box-shadow: var(--shadow-1);
+  vertical-align: middle;
+}
+.card-back.small {
+  --card-w: 2.2rem;
+  --card-h: 3.1rem;
+}
+.back-mark {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.7rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+.mini-card em {
+  font-style: normal;
+  font-size: 0.45em;
+  font-weight: 700;
+  display: block;
+  line-height: 1;
+}
+.mini-card {
+  flex-direction: column;
+  line-height: 1;
+}
+
+/* Hand cards: bigger; states by shape + text, not colour alone */
+.hand .card-face {
+  --card-w: 4.75rem;
+  --card-h: 6.65rem;
+}
+.hand button.card {
+  position: relative;
+  padding: 6px;
+  border: 3px solid transparent;
+  border-radius: 16px;
+  background: none;
+}
+.hand button.card.live.playable .card-face {
+  transform: translateY(-6px); /* lifted = playable */
+  box-shadow:
+    0 0 0 3px var(--c-accent),
+    var(--shadow-2);
+}
+.hand button.card.dim .card-face {
+  opacity: 0.6;
+  filter: grayscale(0.55);
+  background-image: repeating-linear-gradient(135deg, transparent 0 7px, color-mix(in srgb, var(--c-card-ink) 14%, transparent) 7px 9px);
+}
+.hand button.card.selected .card-face {
+  transform: translateY(-14px);
+  box-shadow:
+    0 0 0 4px var(--c-good),
+    var(--shadow-2);
+}
+.state-tag {
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  z-index: 1;
+}
+.state-tag.no {
+  background: var(--c-surface-2);
+  color: var(--c-text);
+  border: 1px solid var(--c-border-strong);
+}
+.state-tag.sel {
+  background: var(--c-good);
+  color: var(--c-bg);
+}
+.state-tag.sel::before {
+  content: '✓ ';
+}
+
+/* Fan layout: one overlapping row; each card keeps ≥ 48px visible (sizing rule in FanHand) */
+.cards.fan {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 14px 0 6px;
+  row-gap: 18px;
+}
+.cards.fan > li + li {
+  margin-inline-start: calc(var(--step, 56px) - 4.75rem - 18px);
+}
+.cards.fan > li:hover,
+.cards.fan > li:focus-within {
+  z-index: 2;
+}
+.cards.fan > li {
+  position: relative;
+}
+
+/* ---------- Table polish ---------- */
+.felt::before {
+  border-color: var(--c-rim);
+  box-shadow:
+    inset 0 0 50px rgba(0, 0, 0, 0.5),
+    0 0 0 2px var(--c-rim-line),
+    0 18px 40px rgba(0, 0, 0, 0.55);
+}
+.felt-trick {
+  color: var(--c-felt-text);
+  opacity: 0.85;
+}
+.felt-card .card-face {
+  --card-w: 3.6rem;
+  --card-h: 5rem;
+}
+.felt-tag {
+  position: absolute;
+  left: 50%;
+  top: -12px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  z-index: 3;
+}
+.felt-tag.trump {
+  background: var(--c-suit-hearts);
+  color: #fff;
+}
+.felt-tag.won {
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  top: auto;
+  bottom: -12px;
+}
+.felt-tag.just {
+  background: var(--c-surface);
+  color: var(--c-text);
+  border: 1px solid var(--c-border-strong);
+}
+.felt-card.just .card-face {
+  box-shadow:
+    0 0 0 3px var(--c-focus),
+    var(--shadow-2);
+}
+.seat-chip {
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent);
+  backdrop-filter: blur(6px);
+}
+.avatar {
+  position: relative;
+}
+.avatar-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  background: var(--c-surface);
+  border-radius: 50%;
+  padding: 2px;
+  line-height: 0;
+  font-size: 0.8rem;
+}
+.seat-turn,
+.seat-speaking {
+  justify-self: start;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0 8px;
+  margin-top: 2px;
+}
+.seat-turn {
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+}
+.seat-speaking {
+  border: 2px solid var(--c-good);
+  color: var(--c-text);
+}
+.seat-chip.speaking {
+  box-shadow:
+    0 0 0 3px var(--c-good),
+    var(--shadow-2);
+}
+@media (max-width: 720px) {
+  .seat-turn,
+  .seat-speaking {
+    justify-self: center;
+  }
+}
+
+/* ---------- Event moments (trump reveal, round/match result) ---------- */
+.moment {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  max-width: min(90%, 26rem);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-l);
+  text-align: center;
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent);
+  border: 2px solid var(--c-accent-edge);
+  box-shadow: var(--shadow-2), 0 0 40px color-mix(in srgb, var(--c-accent) 25%, transparent);
+  animation: pop-in var(--dur-3) var(--ease) both;
+}
+.moment-card {
+  width: 4rem;
+  height: 5.6rem;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 3rem;
+  background: var(--c-card);
+  border: 2px solid var(--c-card-edge);
+  animation: flip-in var(--dur-4) var(--ease) both;
+}
+.moment-card.suit-S {
+  color: var(--c-suit-spades);
+}
+.moment-card.suit-H {
+  color: var(--c-suit-hearts);
+}
+.moment-card.suit-C {
+  color: var(--c-suit-clubs);
+}
+.moment-card.suit-D {
+  color: var(--c-suit-diamonds);
+}
+.moment-text {
+  font-weight: 700;
+  font-size: var(--fs-l);
+}
+.moment-title {
+  font-size: var(--fs-xxl);
+  font-weight: 800;
+  color: var(--c-accent-ink);
+}
+.moment-sub {
+  color: var(--c-muted);
+  font-weight: 700;
+}
+.result-moment:not(.celebrate) {
+  border-color: var(--c-border-strong);
+}
+.result-moment:not(.celebrate) .moment-title {
+  color: var(--c-text);
+}
+.confetti {
+  position: absolute;
+  inset: -20px;
+  pointer-events: none;
+  overflow: hidden;
+}
+.confetti i {
+  position: absolute;
+  top: -10px;
+  left: calc(var(--k) * 5.5%);
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--c-accent);
+  animation: fall 1.8s calc(var(--k) * 60ms) ease-in both;
+}
+.confetti i:nth-child(3n) {
+  background: var(--c-team-a);
+}
+.confetti i:nth-child(3n + 1) {
+  background: var(--c-team-b);
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+@keyframes fall {
+  to {
+    transform: translateY(260px) rotate(540deg);
+    opacity: 0;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- Caption strip (announcements as text + sound indicators) ---------- */
+.captions {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) max(16px, env(safe-area-inset-right)) calc(var(--space-2) + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: color-mix(in srgb, var(--c-surface) 95%, transparent);
+  backdrop-filter: blur(10px);
+  border-top: var(--line) solid var(--c-border);
+}
+.cap-text p {
+  margin: 0;
+}
+.cap-now {
+  font-weight: 700;
+}
+.cap-prev {
+  font-size: var(--fs-s);
+  color: var(--c-muted);
+}
+.cap-chans {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 32rem;
+}
+.chan {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--c-muted);
+  padding: 2px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+}
+.chan.on {
+  color: var(--c-text);
+  border-color: var(--c-accent-edge);
+  background: color-mix(in srgb, var(--c-accent) 14%, transparent);
+  font-weight: 700;
+}
+.history .h-time {
+  color: var(--c-muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+.history .h-chat {
+  border-inline-start: 4px solid var(--c-team-a);
+}
+@media (max-width: 720px) {
+  /* Phones: quick bar is at the bottom, so captions sit at the top. */
+  .captions {
+    top: 0;
+    bottom: auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-top: calc(var(--space-2) + env(safe-area-inset-top));
+    border-top: 0;
+    border-bottom: var(--line) solid var(--c-border);
+  }
+  .cap-chans {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .cap-prev {
+    display: none;
+  }
+  .app {
+    padding-top: 6.5rem;
+  }
+}
+
+/* ---------- Lobby ---------- */
+.lobby-head h1 {
+  margin-bottom: 0;
+}
+.lobby-status {
+  margin: 0;
+  color: var(--c-muted);
+}
+.action-bar {
+  position: sticky;
+  top: 5rem;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-l);
+  background: color-mix(in srgb, var(--c-surface) 96%, transparent);
+  border: var(--line) solid var(--c-accent-edge);
+  box-shadow: var(--shadow-2);
+}
+.action-bar .waiting {
+  margin: 0;
+  font-weight: 700;
+}
+@media (max-width: 720px) {
+  .action-bar {
+    top: 7rem;
+  }
+}
+.code-card .room-code {
+  font-size: clamp(2.2rem, 9vw, 3.4rem);
+  color: var(--c-accent-ink);
+  margin: 0.1em 0;
+}
+.seat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  border-inline-start: 6px solid var(--c-border);
+}
+.seat-row.team-0 {
+  border-inline-start-color: var(--c-team-a);
+}
+.seat-row.team-1 {
+  border-inline-start-color: var(--c-team-b);
+}
+.seat-row.empty {
+  border-style: dashed;
+  border-inline-start-style: dashed;
+}
+.seat-who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.mode-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: var(--space-2);
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--space-3);
+}
+.mode-picker legend {
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+  padding: 0;
+}
+.mode {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  min-height: var(--target);
+  border: var(--line) solid var(--c-border);
+  border-radius: var(--radius-m);
+  background: var(--c-surface-2);
+  cursor: pointer;
+}
+.mode input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.mode.on {
+  border: 3px solid var(--c-accent-edge);
+  background: color-mix(in srgb, var(--c-accent) 14%, var(--c-surface-2));
+}
+.mode.on .mode-title::after {
+  content: ' ✓';
+}
+.mode-title {
+  font-weight: 700;
+}
+.mode-sub {
+  font-size: var(--fs-s);
+  color: var(--c-muted);
+}
+
+/* ---------- Stepper ---------- */
+.stepper {
+  display: inline-grid;
+  grid-template-columns: var(--target) minmax(8rem, auto) var(--target);
+  align-items: center;
+  gap: 6px;
+  margin: var(--space-2) 0;
+}
+.stepper-label {
+  grid-column: 1 / -1;
+  font-weight: 700;
+}
+.stepper-value {
+  min-height: var(--target);
+  display: grid;
+  place-items: center;
+  padding: 0 var(--space-3);
+  border: var(--line) solid var(--c-border-strong);
+  border-radius: var(--radius-m);
+  font-size: var(--fs-l);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: var(--c-bg);
+}
+.btn.step {
+  font-size: var(--fs-l);
+  padding: 0;
+}
+
+/* ---------- Bidding ---------- */
+.bid-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.band-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: var(--fs-s);
+  border: 2px solid var(--c-border-strong);
+  min-height: 32px;
+}
+.band-chip.band-2 {
+  border-color: var(--c-accent-edge);
+  background: color-mix(in srgb, var(--c-accent) 16%, transparent);
+  color: var(--c-accent-ink);
+}
+.bid-row .band-chip {
+  margin-bottom: 8px;
+}
+.band-key {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0 0;
+  display: grid;
+  gap: 6px;
+  font-size: var(--fs-s);
+  color: var(--c-muted);
+}
+
+/* ---------- Results ---------- */
+.breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.breakdown strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Layouts ---------- */
+/* Landscape phones: table on the left, actions and hand on the right. */
+@media (orientation: landscape) and (max-height: 560px) {
+  main.table {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  main.table > .hud,
+  main.table > .log {
+    grid-column: 1 / -1;
+  }
+  main.table > .felt-wrap {
+    grid-row: span 3;
+    height: 78vh;
+  }
+  .app {
+    padding-top: 0;
+  }
+  .captions {
+    top: auto;
+    bottom: 0;
+  }
+}
+/* Desktop: keep the table, your move and your hand in view together. */
+@media (min-width: 1024px) {
+  .felt-wrap {
+    height: clamp(22rem, 46vh, 34rem);
+  }
+}
+
+/* ---------- Reduce motion: fades only, no movement, no loops ---------- */
+:root[data-motion='reduce'] *,
+:root[data-motion='reduce'] *::before,
+:root[data-motion='reduce'] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+:root[data-motion='reduce'] .moment {
+  animation: fade-in 200ms linear both !important;
+}
+:root[data-motion='reduce'] .confetti {
+  display: none;
+}
+:root[data-motion='reduce'] .hand button.card .card-face {
+  transform: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) *,
+  :root:not([data-motion='full']) *::before,
+  :root:not([data-motion='full']) *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  :root:not([data-motion='full']) .moment {
+    animation: fade-in 200ms linear both !important;
+  }
+  :root:not([data-motion='full']) .confetti {
+    display: none;
+  }
+  :root:not([data-motion='full']) .hand button.card .card-face {
+    transform: none !important;
+  }
+}
+
+/* Quick bar: compact on wide screens so it stays on one line (targets stay 48px). */
+@media (min-width: 721px) {
+  .btn.qb {
+    padding: 4px 10px;
+    font-size: var(--fs-s);
+  }
+  .quickbar kbd {
+    margin-inline-start: 2px;
+  }
+}
+
+/* ---------- Space for the caption strip, sized from its real height ---------- */
+.app {
+  padding-bottom: calc(var(--cap-h, 5rem) + var(--space-4));
+}
+@media (max-width: 720px) {
+  .app {
+    padding-top: calc(var(--cap-h, 4rem) + var(--space-2));
+    padding-bottom: 12rem; /* quick bar */
+  }
+}
+
+/* Small screens: show a sound indicator only while that channel is active. */
+@media (max-width: 720px), (max-height: 560px) {
+  .chan:not(.on) {
+    display: none;
+  }
+  .cap-chans:not(:has(.chan.on)) {
+    display: none;
+  }
+  .captions {
+    gap: var(--space-2);
+  }
+  .cap-now {
+    font-size: var(--fs-s);
+  }
+  .cap-hist {
+    padding: 4px 10px;
+    font-size: var(--fs-s);
+  }
+}
+
+/* Phones (portrait): five quick-bar buttons per row. */
+@media (max-width: 720px) {
+  .quickbar {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .btn.qb {
+    font-size: 0.78rem;
+    padding: 4px 2px;
+    line-height: 1.15;
+  }
+}
+
+/* Landscape phones: one scrollable row of quick-bar buttons, captions at the bottom. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .topbar {
+    position: static;
+    padding: 4px 0;
+  }
+  .quickbar {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .btn.qb {
+    flex: none;
+    padding: 4px 10px;
+    font-size: var(--fs-s);
+  }
+  .room-tag {
+    display: none;
+  }
+  .app {
+    padding-top: 0;
+    padding-bottom: calc(var(--cap-h, 3.5rem) + var(--space-2));
+  }
+  .captions {
+    top: auto;
+    bottom: 0;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  .cap-prev {
+    display: none;
+  }
+  .cap-chans {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+/* Landscape phones: compact status chips and seats so the table fits the short screen. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .hud {
+    gap: 6px;
+  }
+  .hud-chip,
+  .hud-score {
+    min-height: 0;
+    padding: 2px 10px;
+  }
+  .hud-k {
+    font-size: 0.65rem;
+  }
+  .hud-v {
+    font-size: 0.95rem;
+  }
+  .score-n {
+    font-size: 1.1rem;
+  }
+  .hud-chip.trump .mini-card,
+  .hud-chip.trump .card-back {
+    --card-w: 1.4rem;
+    --card-h: 1.95rem;
+    width: 1.4rem;
+    height: 1.95rem;
+    font-size: 0.9rem;
+  }
+  main.table > .felt-wrap {
+    height: max(18rem, calc(100vh - var(--cap-h, 3.5rem) - 7rem));
+  }
+  .seat-chip,
+  .felt-wrap.n6 .seat-chip,
+  .felt-wrap.n8 .seat-chip {
+    width: 6.5rem;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    padding: 4px 6px;
+    font-size: 0.78rem;
+    row-gap: 1px;
+  }
+  .seat-chip .avatar {
+    width: 26px;
+    height: 26px;
+    font-size: 0.8rem;
+  }
+  .seat-chip .backs {
+    display: none;
+  }
+  .felt-card .card-face,
+  .felt-wrap.n8 .felt-card .card-face {
+    --card-w: 2.8rem;
+    --card-h: 3.9rem;
+  }
+}
+
+/* ---------- Deal and bid motion ---------- */
+/* Deal: a fresh hand slides up card by card (new cards mount each round). */
+.hand .cards > li {
+  animation: deal-in var(--dur-3) var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+@keyframes deal-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotate(-4deg);
+  }
+}
+/* Bid: the bubble pops in at the bidder's seat. */
+.bid-bubble {
+  animation: bubble-in var(--dur-2) var(--ease) both;
+}
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}

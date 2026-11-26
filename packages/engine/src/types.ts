@@ -1,0 +1,134 @@
+import type { Card, Suit } from './cards';
+import type { RuleOptions } from './rules';
+
+export type PlayerCount = 2 | 3 | 4 | 6 | 8;
+export const PLAYER_COUNTS: PlayerCount[] = [2, 3, 4, 6, 8];
+
+export interface GameConfig {
+  numPlayers: PlayerCount;
+  /** First side to reach this many game points wins the match. */
+  matchTarget: number;
+  /** 4-player only: deal 4 cards each (16 in play) instead of 6. */
+  fourCardMode: boolean;
+  /** Who leads the first trick. */
+  firstLead: 'dealerLeft' | 'bidderLeft';
+  /** Open-detail settings (DEFAULTs); omitted fields use DEFAULT_RULE_OPTIONS. */
+  options?: Partial<RuleOptions>;
+}
+
+export const DEFAULT_CONFIG: GameConfig = {
+  numPlayers: 4,
+  matchTarget: 21,
+  fourCardMode: false,
+  firstLead: 'dealerLeft',
+};
+
+export type ContractType = 'normal' | 'challengeCoat';
+
+export interface Contract {
+  bidder: number;
+  type: ContractType;
+  /** Bid value (160…304). For Challenge Coat, the highest numeric bid made before it, or the minimum. */
+  value: number;
+}
+
+export type Phase = 'bidding' | 'trumpSelect' | 'playing' | 'roundOver' | 'matchOver';
+
+export type BidAction = { type: 'bid'; value: number } | { type: 'pass' } | { type: 'challengeCoat' };
+
+export type Action =
+  | BidAction
+  | { type: 'selectTrump'; cardId: string }
+  | { type: 'play'; cardId: string }
+  /** A player void in the led suit asks the bidder to reveal trump. */
+  | { type: 'askTrump' }
+  /** The bidder reveals trump himself (when void in the led suit). */
+  | { type: 'revealTrump' }
+  /** Coat: called during play by the bidding side (D1), trick 1 … N−1. */
+  | { type: 'coat' };
+
+export interface BidRecord {
+  seat: number;
+  action: BidAction;
+}
+
+export interface Play {
+  seat: number;
+  card: Card;
+  /** True if this card counts as trump for winning the trick. */
+  asTrump: boolean;
+}
+
+export interface Trick {
+  index: number;
+  leader: number;
+  plays: Play[];
+}
+
+export interface CompletedTrick extends Trick {
+  winner: number;
+  winnerTeam: number;
+  points: number;
+}
+
+export type CallKind = 'normal' | 'coat' | 'challengeCoat';
+
+export interface CoatInfo {
+  seat: number;
+  team: number;
+  /** First trick index the Coat covers. */
+  fromTrick: number;
+  /** Trick index during which it was called. */
+  calledAt: number;
+}
+
+export interface RoundResult {
+  round: number;
+  kind: CallKind;
+  /** Seat that made the deciding call (bidder, Coat caller, or Challenge Coat caller). */
+  caller: number;
+  callerTeam: number;
+  bidder: number;
+  bidValue: number;
+  band: 1 | 2;
+  success: boolean;
+  /** Card points captured per team this round. */
+  capturedPoints: number[];
+  tricksWon: number[];
+  /** Game points awarded per team this round. */
+  awarded: number[];
+  trumpSuit: Suit | null;
+  /** True if the round finished before all tricks were played. */
+  endedEarly: boolean;
+  /**
+   * Why the round stopped early (CR v5), or null if all tricks were played:
+   * bidReached — the bidding side reached its bid (made);
+   * bidImpossible — the bidding side can no longer reach its bid (stopped);
+   * coatFailed / challengeCoatFailed — the calling side lost a trick.
+   */
+  stopReason: StopReason | null;
+}
+
+export type StopReason = 'bidReached' | 'bidImpossible' | 'coatFailed' | 'challengeCoatFailed';
+
+export type RevealKind = 'asked' | 'bidder';
+
+/** Structured events. `to` restricts an event to one seat (private info). */
+export type GameEvent = { to?: number } & (
+  | { kind: 'roundStart'; round: number; dealer: number; firstBidder: number; cardsEach: number }
+  | { kind: 'redeal'; round: number; dealer: number }
+  | { kind: 'bid'; seat: number; action: BidAction }
+  | { kind: 'biddingWon'; seat: number; contract: Contract }
+  /** Public: the bidder has chosen trump (the suit stays secret). */
+  | { kind: 'trumpChosen'; seat: number }
+  /** Private to the bidder: the indicator card and the trump suit. */
+  | { kind: 'yourTrump'; seat: number; card: Card }
+  | { kind: 'trumpAsked'; seat: number; bidder: number }
+  | { kind: 'trumpRevealed'; seat: number; bidder: number; suit: Suit; how: RevealKind }
+  | { kind: 'cardPlayed'; seat: number; card: Card; asTrump: boolean; trickIndex: number }
+  | { kind: 'trickWon'; seat: number; team: number; points: number; trickIndex: number; captured: number[]; bid: number; bidderTeam: number }
+  | { kind: 'coat'; seat: number; team: number; trickIndex: number }
+  | { kind: 'turn'; seat: number; phase: Phase }
+  | { kind: 'roundOver'; result: RoundResult; scores: number[] }
+  | { kind: 'matchOver'; winners: number[]; scores: number[] }
+);

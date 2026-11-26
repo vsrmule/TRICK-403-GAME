@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Trick 304</string>
+    <string name="title_activity_main">Trick 304</string>
+    <string name="package_name">com.trick304.app</string>
+    <string name="custom_url_scheme">com.trick304.app</string>
+</resources>

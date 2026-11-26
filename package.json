@@ -1,0 +1,19 @@
+{
+  "name": "game-304",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"npm:dev -w @g304/server\" \"npm:dev -w @g304/web\"",
+    "build": "npm run build -w @g304/web",
+    "start": "npm run start -w @g304/server",
+    "test": "vitest run",
+    "typecheck": "tsc -p packages/engine --noEmit && tsc -p apps/server --noEmit && tsc -p apps/web --noEmit"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

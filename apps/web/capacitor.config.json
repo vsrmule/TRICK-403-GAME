@@ -1,0 +1,14 @@
+{
+  "appId": "com.trick304.app",
+  "appName": "Trick 304",
+  "webDir": "dist",
+  "server": {
+    "url": "https://senorita-moonrise-designed.ngrok-free.dev",
+    "cleartext": false
+  },
+  "overrideUserAgent": "Trick304App/1.0 (Android; Capacitor)",
+  "android": {
+    "backgroundColor": "#0A0F1C",
+    "allowMixedContent": false
+  }
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+.env
+
+# Android build outputs
+apps/web/android/app/build/
+apps/web/android/.gradle/
+apps/web/android/build/
+apps/web/android/local.properties
