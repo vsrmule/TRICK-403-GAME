@@ -149,3 +149,12 @@ Only the listed changes were made. Look, sound, voice and accessibility are unch
 - If trump is never revealed, it appears in the round summary.
 - Removed: the face-down trump card, the "last card is the hidden trump" rule, and the old `bidderHiddenTrumpCounts` note (D3) from CR v5, which no longer applies.
 - Acceptance tests 1–8 are covered in `packages/engine/test/engine.test.ts` ("Issue 6: trump indicator card").
+
+## Issue 7 — Right of the bidder leads; hidden trump card known only to the bidder
+
+- **Change 1:** the player to the bidder's right (the next seat in turn order) always leads trick 1, in every mode and every round. The lobby setting "First trick led by" was removed because it conflicted with this rule. Everyone hears "A is the bidder. B leads the first trick." From trick 2 the trick winner leads, as before.
+- **Change 2:** the bidder places one card as the hidden trump card. Everyone hears "A has placed the trump card." Only the bidder sees the card: it is marked "Trump card" in their hand and named in their screen-reader text.
+- The card stays in the bidder's hand count, so playing it looks like any other card. It is never labelled as trump, and playing it does not reveal trump. The bidder alone hears "You played your trump card. Trump stays hidden unless you reveal it."
+- Trump is revealed only by the bidder's choice or by a valid ask from a player with no card of the led suit.
+- **D1:** any card may be placed. **D2:** after a reveal, an unplayed placed card stays marked for the bidder only, until it is played.
+- **Tests:** the Coat scoring tests now set the bidding side to open the trick directly, because in team modes that side no longer leads trick 1. The Issue 7 tests cover acceptance tests 1–8.
