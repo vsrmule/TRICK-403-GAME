@@ -1,7 +1,7 @@
 # Trick 304 — Android app (APK)
 
 The Android app is a Capacitor wrapper around the live game site. It opens
-`https://senorita-moonrise-designed.ngrok-free.dev` inside the app, so every update
+`https://trick304.live` inside the app, so every update
 to the website reaches app users immediately — no reinstall needed.
 
 ## What the app adds
