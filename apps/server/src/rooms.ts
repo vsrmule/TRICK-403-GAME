@@ -94,10 +94,6 @@ export function sanitizeSettings(base: RoomSettings, s: Partial<RoomSettings>): 
     out.matchTarget = t;
   }
   if (s.fourCardMode !== undefined) out.fourCardMode = !!s.fourCardMode;
-  if (s.firstLead !== undefined) {
-    if (s.firstLead !== 'dealerLeft' && s.firstLead !== 'bidderLeft') throw new RoomError('Bad first lead');
-    out.firstLead = s.firstLead;
-  }
   if (s.turnTimer !== undefined) {
     if (![0, 15, 30, 60, 90].includes(s.turnTimer)) throw new RoomError('Turn timer must be off, 15, 30, 60 or 90 seconds');
     out.turnTimer = s.turnTimer;
@@ -409,7 +405,7 @@ export class RoomManager {
     if (room.seats.some((s) => s.kind === 'empty')) throw new RoomError('Fill every seat with a player or a bot first');
     const s = room.settings;
     room.game = new Game304(
-      { numPlayers: s.numPlayers, matchTarget: s.matchTarget, fourCardMode: s.fourCardMode, firstLead: s.firstLead },
+      { numPlayers: s.numPlayers, matchTarget: s.matchTarget, fourCardMode: s.fourCardMode },
       { rng: this.opts.rng, dealer: Math.floor(this.opts.rng() * s.numPlayers) },
     );
     room.ready.clear();

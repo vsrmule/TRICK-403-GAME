@@ -1520,3 +1520,19 @@ a.btn {
 .trump-pill.suit-H { color: var(--c-suit-hearts); }
 .trump-pill.suit-C { color: var(--c-suit-clubs); }
 .trump-pill.suit-D { color: var(--c-suit-diamonds); }
+
+/* Issue 7: the bidder's own placed trump card, marked in their hand (only they ever see it). */
+.card .trump-card-tag {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--c-accent);
+  color: var(--c-on-accent, #fff);
+  font: 700 0.62rem/1.4 var(--font-ui, inherit);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}

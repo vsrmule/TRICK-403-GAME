@@ -36,6 +36,16 @@ function rig(g: Game304, hands: string[]) {
   g.hands = hands.map(hand);
   g.pointsInPlay = g.hands.reduce((s, h) => s + sumPoints(h), 0);
 }
+/**
+ * Issue 7 moved trick 1's lead to the bidder's right, so in team modes the bidding side never
+ * opens trick 1. Coat scoring tests put `seat` at the opening of the current trick directly
+ * (as atTrickStart does); who leads is tested in the Issue 7 block.
+ */
+function opensTrick<G extends Game304>(g: G, seat: number): G {
+  g.currentTrick!.leader = seat;
+  g.turn = seat;
+  return g;
+}
 const playFirst = (g: Game304) => g.apply(g.turn, { type: 'play', cardId: g.legalCards(g.turn)[0].id });
 function playOut(g: Game304) {
   while (g.phase === 'playing') playFirst(g);
@@ -218,7 +228,7 @@ describe('CR v5: early stops (changes 1 and 4)', () => {
     expect(g.phase).toBe('playing');
   });
   it('with Coat active, neither early stop applies; only a lost trick ends the round (acceptance 5)', () => {
-    const g = teamABids(160);
+    const g = opensTrick(teamABids(160), 0);
     g.apply(0, { type: 'coat' });
     playOut(g);
     expect(g.completedTricks).toHaveLength(3); // bid reached after trick 1, yet play went on
@@ -293,32 +303,32 @@ describe('CR v5: trump is the whole suit (change 2)', () => {
 
 describe('Coat (during play)', () => {
   it('Band 1 made: 1 + 2 = 3 (acceptance 14)', () => {
-    const g = teamABids(170);
+    const g = opensTrick(teamABids(170), 0);
     g.apply(0, { type: 'coat' });
     playOut(g);
     expect(g.lastResult).toMatchObject({ kind: 'coat', band: 1, success: true, awarded: [3, 0] });
   });
   it('Band 2 made: 2 + 3 = 5 (acceptance 14)', () => {
-    const g = teamABids(220);
+    const g = opensTrick(teamABids(220), 0);
     g.apply(0, { type: 'coat' });
     playOut(g);
     expect(g.lastResult).toMatchObject({ kind: 'coat', band: 2, success: true, awarded: [5, 0] });
   });
   it('Band 1 failed: round stops at once, opponents get 6 (acceptance 13)', () => {
-    const g = teamBLeads(170);
+    const g = opensTrick(teamBLeads(170), 1);
     g.apply(1, { type: 'coat' }); // Team B opens trick 1 and calls Coat
     playOut(g);
     expect(g.completedTricks).toHaveLength(1);
     expect(g.lastResult).toMatchObject({ kind: 'coat', band: 1, success: false, awarded: [6, 0], endedEarly: true, stopReason: 'coatFailed' });
   });
   it('Band 2 failed: opponents get 10 (acceptance 13)', () => {
-    const g = teamBLeads(240);
+    const g = opensTrick(teamBLeads(240), 1);
     g.apply(1, { type: 'coat' });
     playOut(g);
     expect(g.lastResult).toMatchObject({ kind: 'coat', band: 2, success: false, awarded: [10, 0], stopReason: 'coatFailed' });
   });
   it('is announced as accepted', () => {
-    const g = teamABids(170);
+    const g = opensTrick(teamABids(170), 0);
     g.drainEvents();
     g.apply(0, { type: 'coat' });
     const e = g.drainEvents().find((x) => x.kind === 'coat')!;
@@ -327,13 +337,13 @@ describe('Coat (during play)', () => {
     );
   });
   it('only the bidding side may call Coat (D1, unchanged), on its own turn, once', () => {
-    const g = teamABids(170);
+    const g = opensTrick(teamABids(170), 0);
     expect(() => g.apply(1, { type: 'coat' })).toThrow(/turn/);
     g.apply(0, { type: 'coat' });
     expect(() => g.apply(0, { type: 'coat' })).toThrow(/already/);
   });
   it('is refused once a card of the trick has been played (call it when opening the trick)', () => {
-    const g = teamABids(300);
+    const g = opensTrick(teamABids(300), 0);
     playFirst(g); // seat 0 (bidding side) leads
     // seat 1 is Team B; walk to seat 2 (Team A) mid-trick
     playFirst(g);
@@ -348,6 +358,7 @@ describe('Coat (during play)', () => {
   it('is not available during a Challenge Coat', () => {
     const g = eight([[0, { type: 'challengeCoat' }]]);
     g.apply(0, { type: 'selectTrump', cardId: 'AS' });
+    opensTrick(g, 0);
     expect(() => g.apply(0, { type: 'coat' })).toThrow(/Challenge Coat/);
   });
 });
@@ -484,12 +495,12 @@ describe('Issue 6: trump indicator card', () => {
       const json = JSON.stringify({ v, e: eventsFor(evs, s) });
       expect(json).not.toMatch(/"trumpSuit":"H"|yourTrump|myTrumpIndicator":{/);
       expect(said(g, s, evs)).not.toMatch(/Hearts/);
-      expect(said(g, s, evs)).toMatch(/Priya chose trump\. It stays hidden\./);
+      expect(said(g, s, evs)).toMatch(/Priya has placed the trump card\./);
       expect(scoreStatus(v, NAMES)).not.toMatch(/Hearts/);
     }
     expect(viewFor(g, null).trumpSuit).toBeNull(); // spectators too
     // The bidder alone is told privately.
-    expect(said(g, 0, evs)).toMatch(/You chose Hearts as trump with the Queen of Hearts\. The card stays in your hand\. Only you know trump\./);
+    expect(said(g, 0, evs)).toMatch(/You placed the Queen of Hearts as your trump card\. Trump is Hearts\. Only you know it\. You can still play this card\./);
   });
 
   it('4: a player with no card of the led suit asks, and trump is announced to all', () => {
@@ -556,6 +567,124 @@ describe('Issue 6: trump indicator card', () => {
       expect(g.hands.flat().length).toBe(before);
       expect('hiddenTrump' in g).toBe(false);
     }
+  });
+});
+
+describe('Issue 7: right of the bidder leads; hidden trump card known only to the bidder', () => {
+  const NAMES = ['Priya', 'Arjun', 'Meera', 'Kiran'];
+  const HANDS = ['QH KH JS 9S AS 10S', 'JC 9C AC 10C KC QS', 'JH 9H AH 10H JD 9D', 'QC AD 10D KD QD KS'];
+  const said = (g: Game304, seat: number, events: ReturnType<Game304['drainEvents']>) =>
+    eventsFor(events, seat).map((e) => describeEvent(e, NAMES, seat, viewFor(g, seat))?.text ?? '').join(' ');
+  /** Dealer 2: bidding starts at seat 3, so the old "left of the dealer" rule would have made seat 3 lead. */
+  function setup() {
+    const g = new Game304(cfg(), { dealer: 2, rng: seededRng(3) });
+    rig(g, HANDS);
+    g.apply(3, { type: 'pass' });
+    g.apply(0, { type: 'bid', value: 300 });
+    g.apply(1, { type: 'pass' });
+    g.apply(2, { type: 'pass' });
+    g.drainEvents();
+    g.apply(0, { type: 'selectTrump', cardId: 'QH' });
+    return g;
+  }
+
+  it('1: the player to the right of the bidder leads trick 1, and it is announced to everyone', () => {
+    const g = setup();
+    const evs = g.drainEvents();
+    expect(g.turn).toBe(1);
+    expect(g.currentTrick!.leader).toBe(1);
+    expect(said(g, 2, evs)).toContain('Priya has placed the trump card.');
+    expect(said(g, 2, evs)).toContain('Priya is the bidder. Arjun leads the first trick.');
+    expect(said(g, 1, evs)).toContain('Priya is the bidder. You lead the first trick.');
+    expect(said(g, 0, evs)).toContain('You are the bidder. Arjun leads the first trick.');
+  });
+
+  it('1: in every mode and every round the bidder never leads trick 1; from trick 2 the winner leads', () => {
+    for (const n of PLAYER_COUNTS) {
+      const g = new Game304(cfg({ numPlayers: n, matchTarget: 30 }), { rng: seededRng(40 + n) });
+      let rounds = 0;
+      while (g.phase !== 'matchOver' && rounds < 12) {
+        if (g.phase === 'roundOver') {
+          rounds++;
+          g.nextRound();
+          continue;
+        }
+        const wasTrumpSelect = g.phase === 'trumpSelect';
+        const before = g.completedTricks.length;
+        g.apply(g.turn, botDecide(viewFor(g, g.turn))!);
+        if (wasTrumpSelect) {
+          const bidder = g.contract!.bidder;
+          expect(g.currentTrick!.leader).toBe((bidder + 1) % n);
+          expect(g.turn).not.toBe(bidder);
+        }
+        if (g.phase === 'playing' && g.completedTricks.length > before && g.currentTrick)
+          expect(g.currentTrick.leader).toBe(g.completedTricks[g.completedTricks.length - 1].winner);
+      }
+      expect(rounds).toBeGreaterThan(0);
+    }
+  });
+
+  it('2/3/4: playing the placed card does not reveal or announce trump, and nothing leaks', () => {
+    const g = setup();
+    g.apply(1, { type: 'play', cardId: 'JC' });
+    g.apply(2, { type: 'play', cardId: 'JD' });
+    g.apply(3, { type: 'play', cardId: 'QC' });
+    g.drainEvents();
+    expect(viewFor(g, 0).myHand.find((c) => c.id === 'QH')).toBeTruthy();
+    g.apply(0, { type: 'play', cardId: 'QH' }); // void in clubs; the bidder plays the placed card without revealing
+    const evs = g.drainEvents();
+    expect(g.trumpRevealed).toBe(false);
+    expect(evs.some((e) => e.kind === 'trumpRevealed')).toBe(false);
+    for (const s of [1, 2, 3]) {
+      const v = viewFor(g, s);
+      expect(v.trumpSuit).toBeNull();
+      expect(v.myTrumpIndicator).toBeNull();
+      const json = JSON.stringify({ v: { ...v, myHand: [] }, e: eventsFor(evs, s) });
+      expect(json).not.toMatch(/"trumpSuit":"H"|yourTrump|youPlayedTrumpCard|"asTrump":true/);
+      const text = said(g, s, evs);
+      expect(text).toContain('Priya played Queen of Hearts');
+      expect(text).not.toMatch(/trump/i);
+    }
+    // Only the bidder is reminded privately.
+    expect(said(g, 0, evs)).toContain('You played your trump card. Trump stays hidden unless you reveal it.');
+    expect(viewFor(g, 0).myTrumpIndicator).toBeNull(); // played: no longer marked
+  });
+
+  it('5: the bidder may reveal, or keep it hidden; D2: the unplayed card stays marked for the bidder after a reveal', () => {
+    const g = setup();
+    g.apply(1, { type: 'play', cardId: 'QS' });
+    g.apply(2, { type: 'play', cardId: 'JD' });
+    g.apply(3, { type: 'play', cardId: 'KS' });
+    expect(viewFor(g, 0).legal!.canRevealTrump).toBe(true);
+    g.apply(0, { type: 'play', cardId: 'JS' }); // chose not to reveal
+    expect(g.trumpRevealed).toBe(false);
+    // Bidder won with the Jack of Spades and leads trick 2: reveal now, by choice.
+    expect(g.turn).toBe(0);
+    g.apply(0, { type: 'revealTrump' });
+    expect(viewFor(g, 2).trumpSuit).toBe('H');
+    expect(viewFor(g, 0).myTrumpIndicator?.id).toBe('QH');
+    expect(viewFor(g, 2).myTrumpIndicator).toBeNull();
+  });
+
+  it('6: only a player with no card of the led suit may ask', () => {
+    const g = setup();
+    g.apply(1, { type: 'play', cardId: 'QS' }); // spades led
+    expect(viewFor(g, 2).legal!.canAskTrump).toBe(true); // Meera has no spades
+    g.apply(2, { type: 'play', cardId: 'JD' }); // void, chose not to ask: any card is fine
+    expect(viewFor(g, 3).legal!.canAskTrump).toBe(false); // Kiran holds the King of Spades
+    expect(() => g.apply(3, { type: 'askTrump' })).toThrow();
+    expect(g.trumpRevealed).toBe(false);
+  });
+
+  it('7: only the suit of the placed card becomes trump', () => {
+    const g = setup();
+    expect(g.trumpSuit).toBe('H');
+    g.apply(1, { type: 'play', cardId: 'JC' });
+    g.apply(2, { type: 'askTrump' });
+    g.apply(2, { type: 'play', cardId: '9H' });
+    g.apply(3, { type: 'play', cardId: 'QC' });
+    g.apply(0, { type: 'play', cardId: 'JS' });
+    expect(g.completedTricks[0].winner).toBe(2); // a heart, not the Queen of Hearts herself, wins
   });
 });
 
@@ -642,7 +771,7 @@ describe('full matches with bots in every mode', () => {
   const modes: Partial<GameConfig>[] = [];
   for (const numPlayers of PLAYER_COUNTS) {
     modes.push({ numPlayers });
-    modes.push({ numPlayers, firstLead: 'bidderLeft', matchTarget: 30 });
+    modes.push({ numPlayers, matchTarget: 30 });
   }
   modes.push({ numPlayers: 4, fourCardMode: true });
 

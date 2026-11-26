@@ -283,7 +283,9 @@ export class Game304 {
     this.emit({ kind: 'trumpChosen', seat });
     this.emit({ kind: 'yourTrump', seat, card, to: seat });
     this.phase = 'playing';
-    const leader = this.config.firstLead === 'bidderLeft' ? this.next(seat) : this.next(this.dealer);
+    // Issue 7, change 1: the player to the bidder's right (next in turn order) leads trick 1.
+    const leader = this.next(seat);
+    this.emit({ kind: 'firstLead', seat: leader, bidder: seat });
     this.currentTrick = { index: 0, leader, plays: [] };
     this.turn = leader;
     this.emit({ kind: 'turn', seat: leader, phase: 'playing' });
@@ -409,6 +411,9 @@ export class Game304 {
     this.askedThisTurn = null;
     // Publicly, a card is only announced as trump once trump is revealed.
     this.emit({ kind: 'cardPlayed', seat, card, asTrump: asTrump && this.trumpRevealed, trickIndex: trick.index });
+    // Issue 7, 2.4: playing the placed card does not reveal trump. Only the bidder is reminded.
+    if (this.trumpIndicator && card.id === this.trumpIndicator.id && !this.trumpRevealed)
+      this.emit({ kind: 'youPlayedTrumpCard', seat, card, to: seat });
 
     if (trick.plays.length === this.n) return this.resolveTrick();
     this.turn = this.next(seat);

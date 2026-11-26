@@ -31,6 +31,8 @@ export interface Catalog {
     biddingWonChallenge: (who: string) => string[];
     trumpChosen: (who: string) => string[];
     yourTrump: (card: string, suit: string) => string[];
+    firstLead: (bidder: string, leader: string) => string[];
+    youPlayedTrumpCard: () => string[];
     trumpAsked: (who: string, suit: string) => string[];
     trumpRevealedByBidder: (who: string, suit: string) => string[];
     cardPlayed: (who: string, card: string, trump: boolean) => string[];
@@ -119,8 +121,10 @@ const en: Catalog = {
     challengeCoat: (w) => [`${w} called Challenge Coat! Every trick must be won.`, `Challenge Coat from ${from(w)}! Every trick must be won.`],
     biddingWon: (w, b) => [`${w} won the bid at ${b}.`, `The bid goes to ${w}, at ${b}.`],
     biddingWonChallenge: (w) => [`${w} plays Challenge Coat.`],
-    trumpChosen: (w) => [`${w} chose trump. It stays hidden.`, `${vs(w, 'choose', 'chooses')} trump. Still a secret.`],
-    yourTrump: (c, s) => [`You chose ${s} as trump with the ${c}. The card stays in your hand. Only you know trump.`],
+    trumpChosen: (w) => [`${w} has placed the trump card.`, `${w} has placed the trump card. It stays hidden.`],
+    yourTrump: (c, s) => [`You placed the ${c} as your trump card. Trump is ${s}. Only you know it. You can still play this card.`],
+    firstLead: (b, l) => [`${b} ${b === 'You' ? 'are' : 'is'} the bidder. ${vs(l, 'lead')} the first trick.`],
+    youPlayedTrumpCard: () => ['You played your trump card. Trump stays hidden unless you reveal it.'],
     trumpAsked: (w, s) => [`${w} asked for trump. Trump is ${s}.`],
     trumpRevealedByBidder: (w, s) => [`${w} revealed trump. Trump is ${s}.`],
     cardPlayed: (w, c, t) =>
@@ -133,7 +137,7 @@ const en: Catalog = {
         : [`${w} won trick ${n}, ${p} points.`, `${vs(w, 'take')} trick ${n}. ${p} points.`],
     coat: (w, side) => [`Coat accepted. ${w} called Coat: ${side} must win every remaining trick.`, `Coat accepted! ${side} needs every trick from here.`],
     yourTurnBid: () => ['Your turn to bid.', 'Your bid.'],
-    yourTurnTrump: () => ['You won the bid. Choose a card to show your trump suit.'],
+    yourTurnTrump: () => ['You won the bid. Choose one card as your hidden trump card.'],
     yourTurnLead: () => ['Your turn to lead.', 'Your lead.'],
     yourTurnPlay: () => ['Your turn to play.', 'Your turn.'],
     waitBid: (w) => [`Waiting for ${w} to bid.`],
@@ -156,7 +160,7 @@ const en: Catalog = {
       lo
         ? `Bid ${lo} or higher, or pass.${ch ? ' You can also call Challenge Coat.' : ''}`
         : `No higher bid is left. Pass${ch ? ', or call Challenge Coat' : ''}.`,
-    trump: () => 'Pick one card from your hand to choose trump. Its suit becomes the trump suit; the card stays in your hand.',
+    trump: () => 'Pick one card as your hidden trump card. Its suit becomes trump. Only you see it, and you can still play it.',
     lead: (coat) => `You lead this trick. Play any card from your hand.${coat ? ' You can also call Coat.' : ''}`,
     follow: (suit, n, coat) => `Follow ${suit}. You have ${n} ${n === 1 ? 'card' : 'cards'} in ${suit}; play one of them.${coat ? ' You can also call Coat.' : ''}`,
     voidAsk: (suit) => `You have no ${suit}. Play any card, or ask for trump.`,

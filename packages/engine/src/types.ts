@@ -10,8 +10,6 @@ export interface GameConfig {
   matchTarget: number;
   /** 4-player only: deal 4 cards each (16 in play) instead of 6. */
   fourCardMode: boolean;
-  /** Who leads the first trick. */
-  firstLead: 'dealerLeft' | 'bidderLeft';
   /** Open-detail settings (DEFAULTs); omitted fields use DEFAULT_RULE_OPTIONS. */
   options?: Partial<RuleOptions>;
 }
@@ -20,7 +18,6 @@ export const DEFAULT_CONFIG: GameConfig = {
   numPlayers: 4,
   matchTarget: 21,
   fourCardMode: false,
-  firstLead: 'dealerLeft',
 };
 
 export type ContractType = 'normal' | 'challengeCoat';
@@ -121,6 +118,10 @@ export type GameEvent = { to?: number } & (
   | { kind: 'biddingWon'; seat: number; contract: Contract }
   /** Public: the bidder has chosen trump (the suit stays secret). */
   | { kind: 'trumpChosen'; seat: number }
+  /** Issue 7: announced once trump is placed — who bid, and who leads the first trick. */
+  | { kind: 'firstLead'; seat: number; bidder: number }
+  /** Issue 7, private to the bidder: they played their placed trump card; trump stays hidden. */
+  | { kind: 'youPlayedTrumpCard'; seat: number; card: Card }
   /** Private to the bidder: the indicator card and the trump suit. */
   | { kind: 'yourTrump'; seat: number; card: Card }
   | { kind: 'trumpAsked'; seat: number; bidder: number }

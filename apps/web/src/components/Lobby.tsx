@@ -112,13 +112,6 @@ export function Lobby({ room }: { room: RoomSnapshot }) {
               <fieldset disabled={!host} className="stack">
                 <legend className="sr-only">More game settings</legend>
                 <label>
-                  First trick led by
-                  <select className="input" value={s.firstLead} onChange={(e) => set({ firstLead: e.target.value as RoomSettings['firstLead'] })}>
-                    <option value="dealerLeft">Player left of the dealer</option>
-                    <option value="bidderLeft">Player left of the bidder</option>
-                  </select>
-                </label>
-                <label>
                   Turn timer
                   <select className="input" value={s.turnTimer} onChange={(e) => set({ turnTimer: Number(e.target.value) })}>
                     <option value={0}>Relaxed — no timer</option>

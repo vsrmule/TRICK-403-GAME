@@ -72,6 +72,10 @@ export function describeEvent(e: GameEvent, names: Names, me: number | null, v: 
       return e.seat === me ? null : one(L.ev.trumpChosen(names[e.seat]), seed);
     case 'yourTrump':
       return one(L.ev.yourTrump(L.card(e.card.rank, e.card.suit), L.suits[e.card.suit]), seed);
+    case 'firstLead':
+      return one(L.ev.firstLead(W(e.bidder), W(e.seat)), seed);
+    case 'youPlayedTrumpCard':
+      return one(L.ev.youPlayedTrumpCard(), seed);
     case 'trumpAsked':
       return null; // announced together with the reveal that immediately follows
     case 'trumpRevealed':

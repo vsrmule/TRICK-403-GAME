@@ -44,7 +44,7 @@ export interface PlayerView {
   pointsInPlay: number;
   handCounts: number[];
   myHand: Card[];
-  /** Bidder only: the card used to indicate trump (it stays in the hand). */
+  /** Bidder only: the placed trump card, while it is still in the bidder's hand (Issue 7, D2). */
   myTrumpIndicator: Card | null;
   /** Known only once revealed, or to the bidder. */
   trumpSuit: Suit | null;
@@ -86,7 +86,8 @@ export function viewFor(g: Game304, seat: number | null): PlayerView {
     pointsInPlay: g.pointsInPlay,
     handCounts: g.hands.map((h) => h.length),
     myHand: isSeat ? sortHand(g.hands[seat!]).map(clone) : [],
-    myTrumpIndicator: isBidder && g.trumpIndicator && !g.trumpRevealed ? clone(g.trumpIndicator) : null,
+    myTrumpIndicator:
+      isBidder && g.trumpIndicator && g.hands[seat!].some((c) => c.id === g.trumpIndicator!.id) ? clone(g.trumpIndicator) : null,
     trumpSuit: trumpKnown ? g.trumpSuit : null,
     trumpRevealed: g.trumpRevealed,
     trumpRevealedBy: g.trumpRevealedBy,
@@ -113,7 +114,7 @@ function legalFor(g: Game304, seat: number): LegalInfo {
   for (const c of g.hands[seat]) {
     if (playable.includes(c.id)) continue;
     let reason: string;
-    if (g.phase === 'trumpSelect') reason = myTurn ? 'Choose to show your trump suit' : 'Waiting for trump selection';
+    if (g.phase === 'trumpSelect') reason = myTurn ? 'Choose as your hidden trump card' : 'Waiting for trump selection';
     else if (g.phase === 'bidding') reason = 'Bidding in progress';
     else if (g.phase !== 'playing') reason = 'Round over';
     else if (!myTurn) reason = 'Not your turn';

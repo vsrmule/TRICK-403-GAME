@@ -293,7 +293,7 @@ function ActionPanel({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
 
       {v.phase === 'trumpSelect' &&
         (L?.canSelectTrump ? (
-          <p className="callout">You won the bid. Choose a card from your hand below to show your trump suit. The card stays in your hand.</p>
+          <p className="callout">You won the bid. Choose one card from your hand below as your hidden trump card. Its suit becomes trump. Only you will see it, and you can still play it.</p>
         ) : (
           <p>{who(room, v.turn)} is choosing trump.</p>
         ))}
@@ -531,8 +531,10 @@ function Hand({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
           <span className={`trump-pill suit-${v.myTrumpIndicator.suit}`} aria-hidden="true">
             {SUIT_SYMBOLS[v.myTrumpIndicator.suit]}
           </span>
-          Your trump: {SUIT_NAMES[v.myTrumpIndicator.suit]} — only you know it. You chose it with the {cardName(v.myTrumpIndicator)}, which stays in your hand.
-          You can reveal trump on any of your turns.
+          Your trump card: {cardName(v.myTrumpIndicator)}, marked "Trump card" in your hand. Only you can see it.{' '}
+          {v.trumpRevealed
+            ? `Trump has been revealed: ${SUIT_NAMES[v.myTrumpIndicator.suit]}.`
+            : `Trump is ${SUIT_NAMES[v.myTrumpIndicator.suit]}. You can play this card at any time — playing it does not reveal trump. You can reveal trump on any of your turns.`}
         </p>
       )}
       {cards.length === 0 && <p>No cards left.</p>}
@@ -540,7 +542,10 @@ function Hand({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
         const cardButton = (c: Card) => {
           const playable = choosingTrump || L.playable.includes(c.id);
           const reason = L.disabledReasons[c.id];
-          const label = choosingTrump ? `${cardName(c)}, ${points(c)} points — Choose to show your trump suit` : cardLabel(c, playable, reason);
+          const isTrumpCard = v.myTrumpIndicator?.id === c.id;
+          const label = choosingTrump
+            ? `${cardName(c)}, ${points(c)} points — Choose as your hidden trump card`
+            : cardLabel(c, playable, reason) + (isTrumpCard ? ' — your trump card' : '');
           const blocked = myTurnToPlay && !playable;
           // State shown by shape/text as well as colour: lifted + "Play", hatched + "Can't play", tick + "Selected".
           const tag = selected === c.id ? 'Selected' : choosingTrump ? 'Hide' : myTurnToPlay && playable ? 'Play' : blocked ? "Can't play" : null;
@@ -553,6 +558,11 @@ function Hand({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
               onClick={() => activate(c)}
             >
               <CardFace card={c} points={p.showPoints} />
+              {isTrumpCard && (
+                <span className="trump-card-tag" aria-hidden="true">
+                  Trump card
+                </span>
+              )}
               {tag && (
                 <span className={`state-tag${blocked ? ' no' : ''}${selected === c.id ? ' sel' : ''}`} aria-hidden="true">
                   {tag}

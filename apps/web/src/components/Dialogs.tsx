@@ -332,14 +332,14 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       </p>
       <h3>Choosing trump</h3>
       <p>
-        The winning bidder points at one card in their hand. Its suit is trump — the whole suit — but only the bidder knows it. The card stays in the bidder's hand
-        and can be played like any other card. Trump is revealed when a player with no card of the led suit asks for it, or whenever the bidder chooses to reveal it.
+        The winning bidder places one card as the hidden trump card. Its suit is trump — the whole suit — but only the bidder can see the card. It stays playable:
+        the bidder can play it at any time, and playing it does not reveal trump. Trump is revealed only when a player with no card of the led suit asks for it, or
+        whenever the bidder chooses to reveal it. The player to the bidder's right (next in turn) leads the first trick.
       </p>
       <h3>Playing</h3>
       <p>
-        Follow the led suit if you can. If you can't, play any card, or ask for trump: the bidder must then reveal it, the hidden card goes back to the bidder's
-        hand, and you must play a trump if you have one. The bidder is never forced to reveal on his own; he may reveal when he has no card of the led suit, and a
-        trump-suit card he plays counts as trump even while hidden. Highest trump wins the trick; otherwise the highest card of the led suit.
+        Follow the led suit if you can. If you can't, play any card, or ask for trump: trump is then revealed to everyone, and you must play a trump if you have
+        one. The bidder is never forced to reveal on their own; they may reveal on any of their turns, and a trump-suit card counts as trump even while hidden. Highest trump wins the trick; otherwise the highest card of the led suit.
       </p>
       <h3>Coat</h3>
       <p>

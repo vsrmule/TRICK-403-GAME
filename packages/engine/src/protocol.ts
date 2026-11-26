@@ -5,7 +5,6 @@ export interface RoomSettings {
   numPlayers: PlayerCount;
   matchTarget: number;
   fourCardMode: boolean;
-  firstLead: 'dealerLeft' | 'bidderLeft';
   /** Seconds per turn; 0 = relaxed (no timer). */
   turnTimer: number;
   /** How quickly bots act, so announcements can keep up. */
@@ -16,7 +15,6 @@ export const DEFAULT_SETTINGS: RoomSettings = {
   numPlayers: 4,
   matchTarget: 21,
   fourCardMode: false,
-  firstLead: 'dealerLeft',
   turnTimer: 0,
   botSpeed: 'normal',
 };
