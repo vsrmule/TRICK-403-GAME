@@ -404,13 +404,14 @@ export class Game304 {
     const hand = this.hands[seat];
     hand.splice(hand.findIndex((c) => c.id === cardId), 1);
     const trick = this.currentTrick!;
-    // CR v5: trump is the whole suit — every card of it counts as trump, whoever plays it,
-    // whether or not trump has been revealed yet.
-    const asTrump = card.suit === this.trumpSuit;
+    // Trump is the whole suit (CR v5), but Issue 8: it has power only once revealed. A trump-suit
+    // card played while trump is still hidden is an ordinary card, for every player, and keeps
+    // no power even if trump is revealed later in the same trick.
+    const asTrump = this.trumpRevealed && card.suit === this.trumpSuit;
     trick.plays.push({ seat, card, asTrump });
     this.askedThisTurn = null;
     // Publicly, a card is only announced as trump once trump is revealed.
-    this.emit({ kind: 'cardPlayed', seat, card, asTrump: asTrump && this.trumpRevealed, trickIndex: trick.index });
+    this.emit({ kind: 'cardPlayed', seat, card, asTrump, trickIndex: trick.index });
     // Issue 7, 2.4: playing the placed card does not reveal trump. Only the bidder is reminded.
     if (this.trumpIndicator && card.id === this.trumpIndicator.id && !this.trumpRevealed)
       this.emit({ kind: 'youPlayedTrumpCard', seat, card, to: seat });

@@ -164,7 +164,7 @@ const en: Catalog = {
     lead: (coat) => `You lead this trick. Play any card from your hand.${coat ? ' You can also call Coat.' : ''}`,
     follow: (suit, n, coat) => `Follow ${suit}. You have ${n} ${n === 1 ? 'card' : 'cards'} in ${suit}; play one of them.${coat ? ' You can also call Coat.' : ''}`,
     voidAsk: (suit) => `You have no ${suit}. Play any card, or ask for trump.`,
-    voidReveal: (suit) => `You have no ${suit}. Play any card, or reveal trump. Your trump-suit cards count as trump even while hidden.`,
+    voidReveal: (suit) => `You have no ${suit}. Play any card, or reveal trump. A trump-suit card can only win once trump is revealed.`,
     canReveal: () => 'You can reveal trump at any time on your turn.',
     voidOpen: (suit) => `You have no ${suit}. Play any card.`,
     mustTrump: () => 'You asked for trump, so play a trump card now.',

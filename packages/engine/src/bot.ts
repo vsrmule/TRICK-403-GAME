@@ -75,8 +75,8 @@ const highestPoints = (cards: Card[]) => cards.reduce((hi, c) => (points(c) > po
 
 /** Would `card` win the trick as things stand, from this seat's knowledge? */
 function wouldWin(card: Card, plays: Play[], v: PlayerView): boolean {
-  const known = v.trumpSuit; // revealed, or our own trump suit if we are the bidder
-  // Trump is the whole suit (CR v5): any trump-suit card counts.
+  // Issue 8: trump has power only once revealed.
+  const known = v.trumpRevealed ? v.trumpSuit : null;
   const counts = known !== null && card.suit === known;
   const sim = [...plays, { seat: v.seat!, card, asTrump: counts }];
   return trickLeader(sim, known)?.seat === v.seat;
@@ -106,6 +106,13 @@ function decidePlay(v: PlayerView): Action {
 
   // Void in the led suit with valuable cards on the table: ask for trump.
   if (L.canAskTrump && !partnerWinning && trickPts >= 15) return { type: 'askTrump' };
+  // The bidder, void in the led suit, must reveal before a trump can cut (Issue 8.6).
+  const led = plays[0].card.suit;
+  if (L.canRevealTrump && !partnerWinning && trickPts >= 15 && trump && !hand.some((c) => c.suit === led)) {
+    const cutters = legal.filter((c) => c.suit === trump);
+    const sim = (c: Card) => trickLeader([...plays, { seat, card: c, asTrump: true }], trump)?.seat === seat;
+    if (cutters.some(sim)) return { type: 'revealTrump' };
+  }
 
   if (partnerWinning) {
     const safe = lastToPlay || isMaster(current.card, seen) || current.asTrump;

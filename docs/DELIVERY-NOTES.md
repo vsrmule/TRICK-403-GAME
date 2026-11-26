@@ -158,3 +158,12 @@ Only the listed changes were made. Look, sound, voice and accessibility are unch
 - Trump is revealed only by the bidder's choice or by a valid ask from a player with no card of the led suit.
 - **D1:** any card may be placed. **D2:** after a reveal, an unplayed placed card stays marked for the bidder only, until it is played.
 - **Tests:** the Coat scoring tests now set the bidding side to open the trick directly, because in team modes that side no longer leads trick 1. The Issue 7 tests cover acceptance tests 1–8.
+
+## Issue 8 — Bug fix: an unrevealed trump suit has no power
+
+- Until trump is revealed, the trump suit is an ordinary suit for **every** player, including the bidder. A trump-suit card played off the led suit cannot win the trick; the highest card of the led suit wins (8.1–8.3, 8.7).
+- Playing any card when you have no card of the led suit is still legal, including a trump-suit card, without revealing (8.4). Following suit is unchanged (8.5).
+- To cut, trump must be revealed first: a non-bidder asks, or the bidder taps "Reveal trump" (8.6). A trump-suit card played *before* the reveal keeps no power, even if trump is revealed later in the same trick. Already-revealed trump works as before (8.8).
+- The winner announcement, running score and next leader follow the corrected winner (8.9).
+- This replaces the CR v5 behaviour ("trump-suit cards count even while hidden"). Help text and the "no card of the led suit" guidance were updated to match. Bots now reveal trump before cutting, as a human bidder must.
+- Tests: "Issue 8: an unrevealed trump suit has no power" covers acceptance tests 1–8.

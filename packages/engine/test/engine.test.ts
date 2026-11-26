@@ -269,18 +269,18 @@ describe('CR v5: score line after every trick (change 3)', () => {
 describe('CR v5: trump is the whole suit (change 2)', () => {
   // dealer 0 → seat 1 bids first and leads. Seat 0 bids, hides QH; trump is Hearts.
   const HANDS = ['QH KH JS 9S AS 10S', 'JC 9C AC 10C KC QS', 'JH 9H AH 10H JD 9D', 'QC AD 10D KD QD KS'];
-  it("a non-bidder's trump-suit card counts as trump even while trump is hidden (acceptance 2)", () => {
+  it("Issue 8: while trump is hidden, a trump-suit card played off-suit has no power", () => {
     const g = new Game304(cfg(), { dealer: 0, rng: seededRng(2) });
     rig(g, HANDS);
     for (const s of [1, 2, 3]) g.apply(s, { type: 'pass' });
-    g.apply(0, { type: 'bid', value: 300 });
+    g.apply(0, { type: 'bid', value: 160 });
     g.apply(0, { type: 'selectTrump', cardId: 'QH' });
     g.apply(1, { type: 'play', cardId: 'JC' });
-    g.apply(2, { type: 'play', cardId: 'JH' }); // void in clubs, no ask: still trump
+    g.apply(2, { type: 'play', cardId: 'JH' }); // void in clubs, no ask: an ordinary card
     g.apply(3, { type: 'play', cardId: 'QC' });
-    g.apply(0, { type: 'play', cardId: 'KH' }); // the bidder's heart is trump too, but lower
+    g.apply(0, { type: 'play', cardId: 'KH' }); // the bidder's heart has no power either
     expect(g.trumpRevealed).toBe(false);
-    expect(g.completedTricks[0].winner).toBe(2); // Jack of Hearts, the highest trump
+    expect(g.completedTricks[0].winner).toBe(1); // Jack of Clubs, the highest card of the led suit
     // Still secret to the other side while hidden:
     expect(viewFor(g, 1).completedTricks[0].plays.every((p) => !p.asTrump)).toBe(true);
     expect(viewFor(g, 1).trumpSuit).toBeNull();
@@ -298,6 +298,118 @@ describe('CR v5: trump is the whole suit (change 2)', () => {
     g.apply(0, { type: 'play', cardId: 'KH' });
     expect(g.completedTricks[0].winner).toBe(2);
     expect(g.completedTricks[0].plays.filter((p) => p.asTrump).map((p) => p.card.id)).toEqual(['10H', 'KH']);
+  });
+});
+
+describe('Issue 8: an unrevealed trump suit has no power', () => {
+  /** Seat 0 bids and places `trumpCard`; seat 1 (right of the bidder) leads. */
+  function deal(hands: string[], trumpCard: string, names: string[]) {
+    const g = new Game304(cfg(), { dealer: 3, rng: seededRng(8) });
+    rig(g, hands);
+    g.apply(0, { type: 'bid', value: 160 });
+    for (const s of [1, 2, 3]) g.apply(s, { type: 'pass' });
+    g.apply(0, { type: 'selectTrump', cardId: trumpCard });
+    g.drainEvents();
+    const said = (seat: number, evs: ReturnType<Game304['drainEvents']>) =>
+      eventsFor(evs, seat).map((e) => describeEvent(e, names, seat, viewFor(g, seat))?.text ?? '').join(' ');
+    return { g, said };
+  }
+  // Ravi (seat 0) has no clubs; diamonds are trump.
+  const RAVI = ['JD 9D AD JH 9H AH', 'JC KC 10C QS KS 10S', 'QC 9C AC JS 9S AS', '10D KD QD 10H KH QH'];
+  const RN = ['Ravi', 'Meera', 'Kiran', 'Arjun'];
+
+  it('1, 3, 8: hidden-trump diamonds played off-suit (bidder and non-bidder) cannot win; the highest club wins', () => {
+    const { g, said } = deal(RAVI, 'AD', RN);
+    g.apply(1, { type: 'play', cardId: 'JC' });
+    g.apply(2, { type: 'play', cardId: 'QC' });
+    g.apply(3, { type: 'play', cardId: '10D' }); // non-bidder, no clubs, does not ask
+    g.apply(0, { type: 'play', cardId: '9D' }); // bidder, no clubs, does not reveal
+    const evs = g.drainEvents();
+    expect(g.trumpRevealed).toBe(false);
+    const t = g.completedTricks[0];
+    expect(t.winner).toBe(1);
+    expect(t.plays.some((p) => p.asTrump)).toBe(false);
+    // 8: announcement, running score and next leader follow the corrected winner.
+    expect(evs.find((e) => e.kind === 'trickWon')).toMatchObject({ seat: 1, points: 62 });
+    expect(said(2, evs)).toContain('Meera won');
+    expect(g.turn).toBe(1);
+    expect(g.currentTrick!.leader).toBe(1);
+    expect(g.capturedByTeam()[g.team(1)]).toBe(62);
+  });
+
+  it('2: hearts hidden, diamonds led: Satya (bidder) plays a heart and does not win', () => {
+    const SATYA = ['JH 9H AH JS 9S AS', 'JD KD 10D QS KS 10S', 'QD 9D AD JC 9C AC', '10H KH QH 10C KC QC'];
+    const { g } = deal(SATYA, 'AH', ['Satya', 'B', 'C', 'D']);
+    g.apply(1, { type: 'play', cardId: 'KD' });
+    g.apply(2, { type: 'play', cardId: 'QD' });
+    g.apply(3, { type: 'play', cardId: 'QH' });
+    g.apply(0, { type: 'play', cardId: 'JH' }); // the Jack of the hidden trump suit: no power
+    expect(g.completedTricks[0].winner).toBe(1); // King of Diamonds, the highest diamond
+  });
+
+  it('4: the bidder reveals first, then cuts and wins', () => {
+    const { g } = deal(RAVI, 'AD', RN);
+    g.apply(1, { type: 'play', cardId: 'JC' });
+    g.apply(2, { type: 'play', cardId: 'QC' });
+    g.apply(3, { type: 'play', cardId: '10H' });
+    g.apply(0, { type: 'revealTrump' });
+    g.apply(0, { type: 'play', cardId: 'AD' });
+    expect(g.completedTricks[0].winner).toBe(0);
+  });
+
+  it('a trump-suit card played before the reveal keeps no power after a later reveal in the same trick', () => {
+    const { g } = deal(RAVI, 'AD', RN);
+    g.apply(1, { type: 'play', cardId: 'JC' });
+    g.apply(2, { type: 'play', cardId: 'QC' });
+    g.apply(3, { type: 'play', cardId: '10D' }); // hidden at this moment: ordinary
+    g.apply(0, { type: 'revealTrump' });
+    g.apply(0, { type: 'play', cardId: 'JH' }); // Ravi reveals but does not cut
+    expect(g.completedTricks[0].winner).toBe(1);
+  });
+
+  it('5: a player holding the led suit must follow', () => {
+    const { g } = deal(RAVI, 'AD', RN);
+    g.apply(1, { type: 'play', cardId: 'JC' });
+    expect(() => g.apply(2, { type: 'play', cardId: 'JS' })).toThrow(/follow/);
+  });
+
+  it('6: once trump has been revealed (by asking), cutting wins as before', () => {
+    const { g } = deal(RAVI, 'AD', RN);
+    g.apply(1, { type: 'play', cardId: 'JC' });
+    g.apply(2, { type: 'play', cardId: 'QC' });
+    g.apply(3, { type: 'askTrump' });
+    g.apply(3, { type: 'play', cardId: '10D' });
+    g.apply(0, { type: 'play', cardId: 'JH' });
+    expect(g.completedTricks[0].winner).toBe(3); // the Ten of Diamonds cuts the clubs
+    expect(g.completedTricks[0].plays.find((p) => p.seat === 3)!.asTrump).toBe(true);
+  });
+
+  it('6: trump revealed in an earlier trick: a later cut wins as before', () => {
+    const H = ['JD 9D AD JH 9H AH', 'JC KC 10C 10D QS KS', 'QC 9C AC JS 9S AS', 'KD QD 10H KH QH 10S'];
+    const { g } = deal(H, 'AD', RN);
+    g.apply(1, { type: 'play', cardId: 'JC' });
+    g.apply(2, { type: 'play', cardId: 'QC' });
+    g.apply(3, { type: 'askTrump' });
+    g.apply(3, { type: 'play', cardId: 'KD' });
+    g.apply(0, { type: 'play', cardId: 'JH' });
+    expect(g.completedTricks[0].winner).toBe(3);
+    // Trick 2: hearts led; Meera has no hearts and cuts with the Ten of Diamonds.
+    g.apply(3, { type: 'play', cardId: '10H' });
+    g.apply(0, { type: 'play', cardId: '9H' });
+    g.apply(1, { type: 'play', cardId: '10D' });
+    g.apply(2, { type: 'play', cardId: 'JS' });
+    expect(g.completedTricks[1].winner).toBe(1);
+  });
+
+  it("7: nobody else holds the led suit and trump is hidden: the leader's card wins", () => {
+    const ALL_SPADES = ['JD 9D AD JH 9H AH', 'JS 9S AS 10S KS QS', '10H KH QH JC 9C AC', '10D KD QD 10C KC QC'];
+    const { g } = deal(ALL_SPADES, 'AD', RN);
+    g.apply(1, { type: 'play', cardId: 'QS' });
+    g.apply(2, { type: 'play', cardId: 'JC' });
+    g.apply(3, { type: 'play', cardId: '10D' });
+    g.apply(0, { type: 'play', cardId: 'JD' });
+    expect(g.trumpRevealed).toBe(false);
+    expect(g.completedTricks[0].winner).toBe(1);
   });
 });
 
@@ -580,7 +692,7 @@ describe('Issue 7: right of the bidder leads; hidden trump card known only to th
     const g = new Game304(cfg(), { dealer: 2, rng: seededRng(3) });
     rig(g, HANDS);
     g.apply(3, { type: 'pass' });
-    g.apply(0, { type: 'bid', value: 300 });
+    g.apply(0, { type: 'bid', value: 160 });
     g.apply(1, { type: 'pass' });
     g.apply(2, { type: 'pass' });
     g.drainEvents();

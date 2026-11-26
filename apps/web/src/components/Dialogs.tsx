@@ -339,7 +339,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       <h3>Playing</h3>
       <p>
         Follow the led suit if you can. If you can't, play any card, or ask for trump: trump is then revealed to everyone, and you must play a trump if you have
-        one. The bidder is never forced to reveal on their own; they may reveal on any of their turns, and a trump-suit card counts as trump even while hidden. Highest trump wins the trick; otherwise the highest card of the led suit.
+        one. The bidder is never forced to reveal on their own; they may reveal on any of their turns. Until trump is revealed, the trump suit has no power: a trump-suit card played then is an ordinary card and cannot win the trick. Highest trump wins the trick; otherwise the highest card of the led suit.
       </p>
       <h3>Coat</h3>
       <p>
