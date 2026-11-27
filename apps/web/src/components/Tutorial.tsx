@@ -29,7 +29,12 @@ async function findTutorial(lang: string): Promise<{ info: TutorialInfo; dir: st
   for (const l of [...new Set([lang, 'en'])]) {
     try {
       const r = await fetch(`${BASE}${l}/tutorial.json`);
-      if (r.ok) return { info: (await r.json()) as TutorialInfo, dir: `${BASE}${l}/`, lang: l };
+      if (!r.ok) continue;
+      const info = (await r.json()) as TutorialInfo;
+      // Only offer the tutorial when its video file is actually there (first bytes only).
+      const v = await fetch(`${BASE}${l}/${info.file}`, { headers: { Range: 'bytes=0-1' } });
+      void v.body?.cancel();
+      if (v.ok && !(v.headers.get('content-type') ?? '').includes('text/html')) return { info, dir: `${BASE}${l}/`, lang: l };
     } catch {
       /* try the next language */
     }
