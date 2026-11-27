@@ -57,17 +57,17 @@ export function Intro({ onDone }: { onDone: () => void }) {
     sfx.play('logo');
     await wait(SFX_LENGTH.logo ?? 1200);
     if (cancelled.current) return;
-    await announcer.sayAndWait(L.gameName, { kind: 'system', always: true });
+    await announcer.sayAndWait({ text: L.gameName, voice: L.gameName, clips: [{ t: 'gameName' }] }, { kind: 'system', always: true });
     setStage('credits');
     for (const c of creditOrder(L.credits)) {
       if (cancelled.current) return;
       setLine(c.text);
-      await announcer.sayAndWait(c.text, { kind: 'system', always: true });
+      await announcer.sayAndWait({ text: c.text, voice: c.text, clips: [{ t: `credit-${c.id}` }] }, { kind: 'system', always: true });
     }
     if (cancelled.current) return;
     setStage('narration');
     setLine(L.intro.narration);
-    await announcer.sayAndWait(L.intro.narration, { kind: 'system', always: true });
+    await announcer.sayAndWait({ text: L.intro.narration, voice: L.intro.narration, clips: [{ t: 'introNarration' }] }, { kind: 'system', always: true });
     if (!cancelled.current) onDone();
   };
 

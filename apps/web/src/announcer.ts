@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from 'react';
-import type { Spoken } from '@g304/engine';
+import type { Spoken, VoiceScript } from '@g304/engine';
 import { activity } from './activity';
+import { gameVoice } from './gameVoice';
 import { music } from './music';
 import { prefs } from './prefs';
-import { screenReader } from './srDetect';
 import { sfx } from './sfx';
 
 export interface LogEntry {
@@ -13,18 +13,19 @@ export interface LogEntry {
   kind: 'game' | 'chat' | 'system';
 }
 
-type Item = { text: string; voice: string; kind: LogEntry['kind']; priority?: boolean; always?: boolean; done?: () => void };
+type Item = { text: string; voice: string; clips?: VoiceScript | null; kind: LogEntry['kind']; priority?: boolean; always?: boolean; done?: () => void };
 
 /**
  * The spoken event queue.
  *
- * Every announcement has a text form (screen reader + readable history) and a
- * voice form (the app's built-in voice). Items play strictly one after another:
- *  - "screenReader": released into an aria-live log for the player's screen reader,
- *    spaced so none are dropped; the game voice stays quiet (nothing is heard twice);
- *  - "voice": the game's own voice, for players without a screen reader;
- *  - "silent": nothing spoken except readouts the player asks for.
- * The text always goes into the readable game log as well.
+ * Every announcement has a text form (captions, readable history, screen reader) and,
+ * where the game can say it, a voice script for the game's own built-in voice
+ * (pre-recorded clips, see gameVoice.ts). Items play strictly one after another:
+ *  - built-in voice on (default) and the item can be said: the game voice plays it, with or
+ *    without a screen reader; it is not also sent to the screen reader, so nothing is heard twice;
+ *  - otherwise (voice off, or free text such as chat): released into an aria-live log for the
+ *    player's screen reader, spaced so none are dropped.
+ * The text always goes into the readable game log and the captions as well.
  * Effects and music duck while anything is being spoken.
  */
 class Announcer {
@@ -86,7 +87,8 @@ class Announcer {
   private stopCurrent() {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    gameVoice.stop();
+    activity.setAnnouncing(false);
     this.current?.done?.();
     this.current = null;
     this.busy = false;
@@ -127,43 +129,34 @@ class Announcer {
       }, afterMs);
     };
 
-    const hasTts = 'speechSynthesis' in window;
-    // Automatic: game voice only when a screen reader is in use on this device.
-    const mode = p.speech === 'auto' ? (screenReader.get() ? 'voice' : 'silent') : p.speech;
-    // Readouts the player asks for (T, S, What now?, errors) and the start sequence always speak.
-    const forced = item.priority === true || item.always === true;
-    const useVoice = (mode === 'voice' || (mode === 'silent' && forced)) && hasTts && p.announceVolume > 0;
-    if (!useVoice) {
-      // Own-screen-reader mode, or no built-in voice on this device: hand the text to the screen reader.
-      if (mode === 'screenReader' || (mode === 'voice' && !hasTts)) this.toLive(entry);
+    const urls = p.gameVoice && p.announceVolume > 0 ? gameVoice.urls(item.clips, item.voice) : null;
+    if (p.gameVoice && !urls && !gameVoice.ready) {
+      // The phrase book is still loading (first seconds after start): wait for it, then decide.
+      void gameVoice.load().then(() => {
+        if (this.current !== item) return;
+        this.queue.unshift(item);
+        this.history = this.history.filter((h) => h !== entry);
+        this.current = null;
+        this.pump();
+      });
+      return;
+    }
+    if (!urls) {
+      // Not something the built-in voice says (or it is off): hand the text to the screen reader.
+      this.toLive(entry);
       const gap = this.gapMs(item.text);
       this.duck(gap);
       finish(gap);
       return;
     }
 
-    const u = new SpeechSynthesisUtterance(item.voice);
-    u.volume = p.announceVolume / 100;
-    u.rate = p.speechRate;
-    u.lang = p.lang === 'en' ? 'en-US' : p.lang;
-    const v = pickVoice(u.lang);
-    if (v) u.voice = v;
-    let ended = false;
     activity.setAnnouncing(true);
-    const end = () => {
-      if (ended) return;
-      ended = true;
+    this.duck((urls.length * 1300) / (p.speechRate || 1));
+    void gameVoice.play(urls, { rate: p.speechRate || 1, volume: p.announceVolume / 100 }).then(() => {
+      if (this.current !== item) return;
       activity.setAnnouncing(false);
       finish(120);
-    };
-    u.onend = end;
-    u.onerror = end;
-    this.duck(this.gapMs(item.voice) * 2);
-    // Safari sometimes leaves the speech engine paused (e.g. after the screen locks).
-    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-    window.speechSynthesis.speak(u);
-    // Safety net: some engines never fire onend.
-    window.setTimeout(end, Math.min(12000, 1500 + item.voice.length * 90));
+    });
   }
 
   private duck(ms: number) {
@@ -177,41 +170,6 @@ class Announcer {
     this.notify();
   }
 }
-
-/**
- * iPhone/iPad Safari only lets a page speak after speech was started inside a user gesture.
- * Speak a silent utterance on the first tap/click/key so later announcements are allowed.
- */
-if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-  let unlocked = false;
-  const unlock = () => {
-    if (unlocked) return;
-    unlocked = true;
-    try {
-      const u = new SpeechSynthesisUtterance(' ');
-      u.volume = 0;
-      window.speechSynthesis.speak(u);
-    } catch {
-      /* ignore */
-    }
-  };
-  for (const ev of ['touchend', 'click', 'keydown']) window.addEventListener(ev, unlock, { capture: true, passive: true });
-}
-
-/** One consistent voice for all announcements and the start sequence. */
-let chosen: SpeechSynthesisVoice | null = null;
-function pickVoice(lang: string): SpeechSynthesisVoice | null {
-  if (!('speechSynthesis' in window)) return null;
-  if (chosen && chosen.lang.startsWith(lang.slice(0, 2))) return chosen;
-  const voices = window.speechSynthesis.getVoices();
-  chosen =
-    voices.find((v) => v.lang === lang && /natural|neural|online/i.test(v.name)) ??
-    voices.find((v) => v.lang === lang) ??
-    voices.find((v) => v.lang.startsWith(lang.slice(0, 2))) ??
-    null;
-  return chosen;
-}
-if ('speechSynthesis' in window) window.speechSynthesis.onvoiceschanged = () => (chosen = null);
 
 export const announcer = new Announcer();
 

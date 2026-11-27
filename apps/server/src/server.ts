@@ -13,9 +13,16 @@ const MIME: Record<string, string> = {
   '.webmanifest': 'application/manifest+json',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
   '.ico': 'image/x-icon',
   '.apk': 'application/vnd.android.package-archive',
+  '.mp3': 'audio/mpeg',
+  '.mp4': 'video/mp4',
+  '.vtt': 'text/vtt; charset=utf-8',
 };
+
+/** Built-in voice clips are content-addressed (the name is a hash of the words), so they never change. */
+const IMMUTABLE = /^\/(assets\/|voice\/[^/]+\/clips\/[^/]+\.mp3$)/;
 
 function staticHandler(root: string | null) {
   return (req: IncomingMessage, res: ServerResponse) => {
@@ -33,13 +40,36 @@ function staticHandler(root: string | null) {
       res.writeHead(403).end();
       return;
     }
-    if (!existsSync(file) || statSync(file).isDirectory()) file = join(root, 'index.html'); // SPA fallback (/r/123456)
-    const headers: Record<string, string> = { 'content-type': MIME[extname(file)] ?? 'application/octet-stream' };
-    if (extname(file) === '.apk') {
-      headers['content-disposition'] = 'attachment; filename="Trick304.apk"';
-      headers['content-length'] = String(statSync(file).size);
+    if (!existsSync(file) || statSync(file).isDirectory()) {
+      // A missing file (clip, video…) is a 404; anything else is a page of the app (/r/123456).
+      if (extname(urlPath)) {
+        res.writeHead(404, { 'content-type': 'text/plain' }).end('Not found');
+        return;
+      }
+      file = join(root, 'index.html');
     }
-    res.writeHead(200, headers);
+    const size = statSync(file).size;
+    const headers: Record<string, string> = { 'content-type': MIME[extname(file)] ?? 'application/octet-stream', 'accept-ranges': 'bytes' };
+    if (IMMUTABLE.test(urlPath)) headers['cache-control'] = 'public, max-age=31536000, immutable';
+    else if (extname(file) !== '.html') headers['cache-control'] = 'public, max-age=3600';
+    if (extname(file) === '.apk') headers['content-disposition'] = 'attachment; filename="Trick304.apk"';
+    // Byte ranges: video seeking (and Safari, which won't play media without them).
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+    if (range && (range[1] || range[2])) {
+      let start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2]));
+      let end = range[1] && range[2] ? Number(range[2]) : size - 1;
+      end = Math.min(end, size - 1);
+      if (start > end || start >= size) {
+        res.writeHead(416, { 'content-range': `bytes */${size}` }).end();
+        return;
+      }
+      res.writeHead(206, { ...headers, 'content-range': `bytes ${start}-${end}/${size}`, 'content-length': String(end - start + 1) });
+      if (req.method === 'HEAD') return void res.end();
+      createReadStream(file, { start, end }).pipe(res);
+      return;
+    }
+    res.writeHead(200, { ...headers, 'content-length': String(size) });
+    if (req.method === 'HEAD') return void res.end();
     createReadStream(file).pipe(res);
   };
 }

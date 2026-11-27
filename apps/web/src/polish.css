@@ -1540,3 +1540,64 @@ a.btn {
   pointer-events: none;
   z-index: 2;
 }
+
+/* ---------- Issue 11: video tutorial in How to Play ---------- */
+.tutorial {
+  margin-bottom: var(--space-4, 1rem);
+  padding-bottom: var(--space-4, 1rem);
+  border-bottom: 1px solid var(--c-border);
+}
+.tutorial-player video {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 8px;
+}
+.tutorial-player:fullscreen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: #000;
+  padding: 8px;
+}
+.tutorial-player:fullscreen video {
+  max-height: calc(100vh - 140px);
+  border-radius: 0;
+}
+.tutorial-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.tutorial-controls .btn {
+  min-height: 48px;
+  min-width: 48px;
+}
+.tutorial-seek {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 220px;
+  font-variant-numeric: tabular-nums;
+}
+.tutorial-seek input {
+  flex: 1;
+  min-height: 48px;
+}
+.tutorial-vol {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tutorial-vol input {
+  width: 120px;
+  min-height: 48px;
+}
+.tutorial-player:fullscreen .tutorial-controls,
+.tutorial-player:fullscreen .tutorial-controls label {
+  color: #fff;
+}

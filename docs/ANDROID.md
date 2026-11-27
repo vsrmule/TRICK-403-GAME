@@ -1,8 +1,13 @@
 # Trick 304 — Android app (APK)
 
-The Android app is a Capacitor wrapper around the live game site. It opens
-`https://trick304.live` inside the app, so every update
-to the website reaches app users immediately — no reinstall needed.
+The Android app is a Capacitor app that **carries the whole game inside the APK**: the web
+app, the built-in voice clips and the tutorial video. Only the live game connection goes to
+the server, `https://trick304.live`. The game screens, voice and video therefore load
+from the phone itself, and the app no longer depends on a web address staying the same.
+
+(Up to version 1.1 the app was an empty shell that opened a web address. Version 1.0 pointed
+at an ngrok tunnel that went offline, which is why the app stopped working. Phones with
+1.0 or 1.1 installed need to install the new APK once.)
 
 ## What the app adds
 
@@ -20,10 +25,9 @@ Players download it from the website's home screen: **Get the Android app → Do
 ## Rebuild the APK
 
 ```powershell
-cd D:\workspace\GAME
-npm run build                       # build the web app
-cd apps\web
-npx cap sync android                # copy config and web build into the Android project
+cd D:\workspace\GAME\apps\web
+npm run build:android               # web app for the APK -> dist-android (game server: .env.android)
+npx cap sync android                # copy it into the Android project
 cd android
 $env:JAVA_HOME = 'C:\Program Files\Android\Android Studio1\jbr'   # JDK 21
 .\gradlew.bat assembleDebug --no-daemon
@@ -31,16 +35,17 @@ copy app\build\outputs\apk\debug\app-debug.apk ..\public\downloads\trick304.apk
 cd ..\..\..; npm run build          # so the server serves the new APK
 ```
 
+Raise `versionCode` / `versionName` in `android/app/build.gradle` for each release.
+
 ## Changing the server address
 
-If the site moves (for example a paid ngrok domain or real hosting), change
-`server.url` in `apps/web/capacitor.config.json`, run `npx cap sync android` and rebuild.
+Edit `apps/web/.env.android` (`VITE_SERVER_URL` = game server, `VITE_PUBLIC_URL` = the
+address used in invite links), then rebuild the APK as above.
 
 ## Notes
 
 - This is a **debug-signed** APK: fine for sharing with friends, not for the Play Store.
   For the Play Store, create a signing key and build `assembleRelease` / an app bundle.
-- The app's user agent is `Trick304App/1.0`, which also stops ngrok's free-plan
-  "Visit Site" warning page from appearing inside the app.
-- Android's WebView has no built-in text-to-speech; with TalkBack on, game events go to
-  TalkBack instead (automatic fallback).
+- `npm run build:android` leaves out `public/downloads`, so the APK never contains an
+  older APK.
+- The app's user agent ends in `Trick304App/1.2` (the normal Android WebView agent comes first).

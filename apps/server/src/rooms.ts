@@ -4,6 +4,7 @@ import {
   ChatMessage,
   REACTIONS,
   BOT_DELAY_MS,
+  BOT_NAMES,
   DEFAULT_SETTINGS,
   Game304,
   GameEvent,
@@ -78,7 +79,6 @@ export interface ManagerOptions {
 /** Called whenever a room changes; `events` are raw (unfiltered) game events. */
 export type Publisher = (room: Room, events: GameEvent[], notices: string[]) => void;
 
-const BOT_NAMES = ['Asha', 'Ravi', 'Meera', 'Kiran', 'Devi', 'Arun', 'Lata', 'Vijay'];
 
 const cleanName = (s: unknown) => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim().slice(0, 20) : '') || 'Player';
 

@@ -67,7 +67,7 @@ export function CaptionStrip({ room }: { room: RoomSnapshot | null }) {
         </div>
         <div className="cap-chans">
           <Channel on={voiceOn && talkers.length > 0} icon="voice" label="Voice" detail={!voiceOn ? undefined : talkers.length ? `${talkers.join(', ')} talking` : 'quiet'} />
-          <Channel on={act.announcing} icon="speak" label="Game voice" detail={act.announcing ? 'speaking' : p.speech === 'auto' || p.speech === 'voice' ? 'quiet' : undefined} />
+          <Channel on={act.announcing} icon="speak" label="Game voice" detail={act.announcing ? 'speaking' : p.gameVoice ? 'quiet' : undefined} />
           <Channel on={!!act.sfx} icon="fx" label="Effects" detail={act.sfx ? 'playing' : 'quiet'} />
           <Channel on={act.music} icon="music" label="Music" detail={act.music ? 'on' : undefined} />
         </div>

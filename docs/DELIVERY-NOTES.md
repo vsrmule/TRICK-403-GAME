@@ -167,3 +167,48 @@ Only the listed changes were made. Look, sound, voice and accessibility are unch
 - The winner announcement, running score and next leader follow the corrected winner (8.9).
 - This replaces the CR v5 behaviour ("trump-suit cards count even while hidden"). Help text and the "no card of the led suit" guidance were updated to match. Bots now reveal trump before cutting, as a human bidder must.
 - Tests: "Issue 8: an unrevealed trump suit has no power" covers acceptance tests 1–8.
+
+## Issue 9 — The Android app did not work
+
+**Cause.** The APK did not contain the game: it was a shell that opened a fixed web address.
+Version 1.0, which the website still served at `/downloads/trick304.apk`, opened an ngrok
+tunnel that is now offline, so the app showed only an ngrok error page
+(ERR_NGROK_3200). The 1.1 fix had been committed, but the site was never redeployed with it.
+
+**Fix.** The app now carries the whole game inside the APK (web app, voice clips, tutorial
+video). Only the live game connection goes to `https://trick304.live`
+(`apps/web/.env.android`). Invite links still use the public address. The APK no longer
+packs the previous APK inside itself (1.1 was 11.8 MB for that reason). Version 1.2.
+
+**Checked.** A complete match was played in the installed APK on an Android 16 emulator
+against the live server, with no crash and no console errors. Players with 1.0 or 1.1 need to
+install 1.2 once. Still to do: a run on a real phone, with TalkBack.
+
+## Issue 10 — Built-in game voice
+
+The game now speaks with its own recorded clips: Azure neural voice Jenny, with excited,
+cheerful and friendly styles. The clips ship inside the website and the APK. Device
+text-to-speech is no longer used anywhere. Details: `docs/VOICE.md`.
+
+- **This replaces DEFAULT 11.** The game voice is now **on for everyone by default**, with or
+  without a screen reader. The screen-reader detection (`srDetect.ts`) is removed.
+- Settings → Announcements → **Game voice** on/off, remembered on the device. Players who had
+  chosen "Off" or "use my own screen reader instead" keep it off.
+- No double speech: what the game voice says is not also sent to the screen reader. Anything the
+  voice has no clips for (chat, free text) goes to the screen reader and the captions.
+- Player-typed names can't be pre-recorded, so the voice says "Seat 3" (and "You"). Bots
+  have recorded names. Text and captions keep the real names.
+- The T / S / B readouts and chat stay text (screen reader and captions).
+- Checked: full matches on the website (desktop Chromium, no screen reader) and in the APK,
+  playing the clips in order; the off switch and that it survives a reload; offline playback in the
+  APK (airplane mode). `npm test` checks that every announcement in randomized matches in
+  every seat count can be said with the phrase book.
+
+## Issue 11 — Video tutorial in How to Play
+
+How to Play now opens with a **Video tutorial** section and a "Play the video tutorial"
+button. The video plays inside the game, from files shipped with the website and the APK.
+The controls are labelled buttons and sliders: Play/Pause, Back 10 s, Forward 10 s, Position
+(read as "3 minutes 20 seconds of 17 minutes"), Mute, Volume and Full screen. Play, pause and
+seek changes are announced to the screen reader. Videos sit in `apps/web/public/media/<lang>/`
+(`tutorial.json` + the video file). The player's language is used, otherwise English.

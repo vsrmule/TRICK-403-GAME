@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { REACTIONS, catalog, describeEvent, guidance, scoreStatus, tableStatus } from '@g304/engine';
+import { REACTIONS, catalog, describeEvent, guidance, scoreStatus, tableStatus, voiceGuidance, voiceJoined, voiceStillWaiting, voiceTurnOf } from '@g304/engine';
 import type { RoomUpdate } from '@g304/engine';
 import { announcer, useAnnouncer } from './announcer';
 import { onRoomUpdate, useNet } from './net';
@@ -36,11 +36,11 @@ function handleUpdate(u: RoomUpdate | null, prevCode: { current: string | null }
   const L = catalog(p.lang);
   const firstUpdate = prevCode.current !== room.code;
   if (firstUpdate) {
-    announcer.say(
+    const joined =
       room.status === 'lobby'
         ? `Joined room ${room.code.split('').join(' ')}. ${room.you.isHost ? 'You are the host.' : ''}`
-        : `Joined room ${room.code.split('').join(' ')}. Game in progress.`,
-    );
+        : `Joined room ${room.code.split('').join(' ')}. Game in progress.`;
+    announcer.say({ text: joined, voice: joined, clips: voiceJoined(room.code, room.status !== 'lobby', room.you.isHost) });
     prevCode.current = room.code;
     lastChatId = room.chat.length ? room.chat[room.chat.length - 1].id : 0; // don't read old history aloud
   }
@@ -52,8 +52,9 @@ function handleUpdate(u: RoomUpdate | null, prevCode: { current: string | null }
   if (waitTimer) clearTimeout(waitTimer);
   waitTimer = null;
   if (v && v.seat !== null && v.turn !== v.seat && v.turn >= 0 && room.seats[v.turn]?.kind === 'human' && ['bidding', 'trumpSelect', 'playing'].includes(v.phase)) {
-    const name = room.seats[v.turn].name;
-    waitTimer = window.setTimeout(() => announcer.say(`Still waiting for ${name}.`), STILL_WAITING_MS);
+    const text = `Still waiting for ${room.seats[v.turn].name}.`;
+    const clips = voiceStillWaiting(v.turn, v.seat, names(room));
+    waitTimer = window.setTimeout(() => announcer.say({ text, voice: text, clips }), STILL_WAITING_MS);
   }
   if (v) {
     const n = names(room);
@@ -89,7 +90,8 @@ function handleUpdate(u: RoomUpdate | null, prevCode: { current: string | null }
             if (p.haptics) navigator.vibrate?.(120);
             // Instruct: tell the player exactly what they can do now (with or without a screen reader).
             if (p.guidance && e === u.events.filter((x) => x.kind === 'turn').pop()) {
-              announcer.say(guidance(v, n, { isHost: room.you.isHost }, L));
+              const g = guidance(v, n, { isHost: room.you.isHost }, L);
+              announcer.say({ text: g, voice: g, clips: voiceGuidance(v, n, { isHost: room.you.isHost }) });
               if (!tipGiven) {
                 tipGiven = true;
                 announcer.say(L.guide.tip());
@@ -97,7 +99,8 @@ function handleUpdate(u: RoomUpdate | null, prevCode: { current: string | null }
             }
           } else if (e.phase === 'playing' && room.seats[e.seat]?.kind === 'human' && e === u.events.filter((x) => x.kind === 'turn').pop()) {
             // Narrate whose turn it is when we're waiting on another person (bots act within seconds).
-            announcer.say(`${n[e.seat]}'s turn.`);
+            const t = `${n[e.seat]}'s turn.`;
+            announcer.say({ text: t, voice: t, clips: voiceTurnOf(e.seat, me, n) });
           }
           break;
         case 'roundOver':
@@ -209,7 +212,9 @@ export function App() {
       return;
     }
     const v = room.view;
-    announcer.say(guidance(v, names(room), { ready: v.seat !== null && room.ready.includes(v.seat), isHost: room.you.isHost }, catalog(p.lang)), { interrupt: true });
+    const opts = { ready: v.seat !== null && room.ready.includes(v.seat), isHost: room.you.isHost };
+    const g = guidance(v, names(room), opts, catalog(p.lang));
+    announcer.say({ text: g, voice: g, clips: voiceGuidance(v, names(room), opts) }, { interrupt: true });
   };
   const leaveRoom = () => {
     if (window.confirm(room?.status === 'playing' ? 'Leave the game? A bot will take your seat.' : 'Leave the room?')) void act('leaveRoom');

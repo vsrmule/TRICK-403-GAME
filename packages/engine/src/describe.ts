@@ -3,6 +3,8 @@ import { trickLeader } from './game';
 import { Catalog, catalog } from './i18n';
 import { BidAction, Contract, GameEvent, RoundResult } from './types';
 import { PlayerView } from './view';
+import type { VoiceScript } from './voiceClips';
+import { voiceEvent } from './voiceScript';
 
 /** Names indexed by seat. */
 export type Names = string[];
@@ -11,6 +13,8 @@ export type Names = string[];
 export interface Spoken {
   text: string;
   voice: string;
+  /** What the game's built-in voice says (pre-recorded clips); absent = text only. */
+  clips?: VoiceScript | null;
 }
 
 export function teamLabel(team: number, numPlayers: number, names: Names, L: Catalog = catalog()): string {
@@ -50,6 +54,11 @@ const one = (variants: string[], seed: number): Spoken => ({ text: variants[0], 
 
 /** Describe an event. `seed` varies the spoken wording; text stays the first, clearest form. */
 export function describeEvent(e: GameEvent, names: Names, me: number | null, v: PlayerView, seed = 0, L: Catalog = catalog()): Spoken | null {
+  const s = describeEventText(e, names, me, v, seed, L);
+  return s && { ...s, clips: voiceEvent(e, names, me, v) };
+}
+
+function describeEventText(e: GameEvent, names: Names, me: number | null, v: PlayerView, seed: number, L: Catalog): Spoken | null {
   const n = v.config.numPlayers;
   const W = (s: number) => who(s, me, names, L);
   const teamMode = n === 4 || n === 6 || n === 8;

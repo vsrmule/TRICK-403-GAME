@@ -7,3 +7,5 @@ export * from './view';
 export * from './bot';
 export * from './describe';
 export * from './protocol';
+export * from './voiceClips';
+export * from './voiceScript';

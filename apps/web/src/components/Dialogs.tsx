@@ -1,7 +1,7 @@
 import { CATALOGS, basketSummary, cardName, RoomSnapshot } from '@g304/engine';
 import { announcer } from '../announcer';
-import { prefs, SpeechMode, usePrefs } from '../prefs';
-import { screenReader, useScreenReaderDetected } from '../srDetect';
+import { prefs, usePrefs } from '../prefs';
+import { TutorialVideo } from './Tutorial';
 import { sfx } from '../sfx';
 import { useVoice, voice } from '../voice';
 import { CardFace, Dialog, act, isTeamMode, names, sideName } from './ui';
@@ -101,7 +101,6 @@ function Check(props: { label: string; checked: boolean; onChange: (v: boolean) 
 export function SettingsDialog({ room, open, onClose }: { room: RoomSnapshot | null; open: boolean; onClose: () => void }) {
   const p = usePrefs();
   const vs = useVoice();
-  const srOn = useScreenReaderDetected();
   const others = room?.members.filter((m) => m.memberId !== room.you.memberId) ?? [];
   return (
     <Dialog open={open} onClose={onClose} title="Settings" wide>
@@ -132,32 +131,23 @@ export function SettingsDialog({ room, open, onClose }: { room: RoomSnapshot | n
 
       <section aria-labelledby="speech-h">
         <h3 id="speech-h">Announcements</h3>
-        <label>
-          Game voice (reads out what happens and what to do)
-          <select className="input" value={p.speech} onChange={(e) => prefs.set({ speech: e.target.value as SpeechMode })}>
-            <option value="auto">Automatic: on when a screen reader is in use</option>
-            <option value="voice">Always on</option>
-            <option value="silent">Off</option>
-            <option value="screenReader">Use my own screen reader instead</option>
-          </select>
-        </label>
-        {p.speech === 'auto' && (
-          <p className="hint">
-            {srOn ? 'A screen reader was detected on this device, so the game voice is on. ' : 'No screen reader detected on this device, so the game voice is off. '}
-            {srOn && (
-              <button className="btn ghost" onClick={() => screenReader.reset()}>
-                Forget detection
-              </button>
-            )}
-          </p>
-        )}
+        <Check
+          label="Game voice: speak announcements in the game's own built-in voice"
+          checked={p.gameVoice}
+          onChange={(v) => prefs.set({ gameVoice: v })}
+        />
+        <p className="hint">
+          {p.gameVoice
+            ? 'The game speaks with its own recorded voice on every device, with or without a screen reader. Chat and other free text go to your screen reader and the captions.'
+            : 'Off: announcements go to your screen reader and the captions only.'}
+        </p>
         <label>
           Announcement pace
           <select className="input" value={p.speechRate} onChange={(e) => prefs.set({ speechRate: Number(e.target.value) })}>
-            <option value={0.8}>Slow</option>
-            <option value={1.1}>Normal</option>
-            <option value={1.5}>Fast</option>
-            <option value={2}>Very fast</option>
+            <option value={0.85}>Slow</option>
+            <option value={1}>Normal</option>
+            <option value={1.25}>Fast</option>
+            <option value={1.5}>Very fast</option>
           </select>
         </label>
         <label>
@@ -177,7 +167,16 @@ export function SettingsDialog({ room, open, onClose }: { room: RoomSnapshot | n
           onChange={(v) => prefs.set({ guidance: v })}
         />
         <div className="row wrap">
-          <button className="btn" onClick={() => announcer.say({ text: 'Test: Arjun asked for trump. Trump is Hearts.', voice: 'Test. Arjun asked for trump. Trump is Hearts.' }, { interrupt: true })}>
+          <button className="btn" onClick={() =>
+              announcer.say(
+                {
+                  text: 'Test: This is the game voice. Seat 3 asks for trump! Trump is Hearts!',
+                  voice: '',
+                  clips: [{ t: 'testVoice' }, { t: 'asksTrump', v: { who: 's3' } }, { t: 'trumpIs', v: { suit: 'H' } }],
+                },
+                { interrupt: true, always: true },
+              )
+            }>
             Test announcement
           </button>
         </div>
@@ -309,6 +308,7 @@ export function SettingsDialog({ room, open, onClose }: { room: RoomSnapshot | n
 export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Dialog open={open} onClose={onClose} title="How to play Trick 304" wide>
+      <TutorialVideo />
       <h3>Keyboard shortcuts</h3>
       <p>Single letters work when focus is not in a text field. With NVDA or JAWS in browse mode, use Alt+Shift plus the letter.</p>
       <ul className="list compact">

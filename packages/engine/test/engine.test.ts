@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   Action,
@@ -6,8 +7,15 @@ import {
   GameConfig,
   PLAYER_COUNTS,
   PlayerCount,
+  PhraseBook,
   PlayerView,
   RULES,
+  VoiceScript,
+  allClips,
+  clipId,
+  scriptClips,
+  voiceGuidance,
+  whoKey,
   allBids,
   bandOf,
   basketSummary,
@@ -991,4 +999,68 @@ describe('spoken wording', () => {
       }
     }
   });
+});
+
+// ------------------------------------------------------------------ Issue 10: built-in voice clips
+
+describe('built-in voice: every announcement can be said with recorded clips', () => {
+  const book = JSON.parse(readFileSync(new URL('../../../apps/web/public/voice/en/phrases.json', import.meta.url), 'utf8')) as PhraseBook;
+  const index = new Map(book.phrases.map((p) => [p.id, p]));
+  const say = (s: VoiceScript | null | undefined, what: string) => {
+    if (!s) return;
+    const clips = scriptClips(book, s, index);
+    if (!clips) throw new Error(`no clips for ${what}: ${JSON.stringify(s)}`);
+    expect(clips.length).toBeGreaterThan(0);
+  };
+
+  it('clip ids are stable, short and distinct', () => {
+    expect(clipId('excited', 'Trick 304!')).toBe(clipId('excited', 'Trick 304!'));
+    expect(clipId('excited', 'Trick 304!')).not.toBe(clipId('cheerful', 'Trick 304!'));
+    const all = allClips(book);
+    expect(new Set(all.map((c) => c.id)).size).toBe(all.length);
+    expect(all.length).toBeGreaterThan(500);
+  });
+
+  it('"You" wording and seat / bot / team names', () => {
+    const names = ['Priya', 'Bot Asha', 'Arjun', 'Bot (Kiran)'];
+    expect(whoKey(0, 0, names)).toBe('you');
+    expect(whoKey(1, 0, names)).toBe('bot-asha');
+    expect(whoKey(2, 0, names)).toBe('s3');
+    expect(whoKey(3, 0, names)).toBe('s4'); // a person's seat taken over by a bot keeps the seat number
+    const text = (s: VoiceScript) => scriptClips(book, s)!.map((c) => c.text).join(' ');
+    expect(text([{ t: 'bid', v: { who: 'you', bid: '200' } }])).toBe('You bid Jaan!');
+    expect(text([{ t: 'bid', v: { who: 's3', bid: '210' } }])).toBe('Seat 3 bids Jaan 10!');
+    expect(text([{ t: 'plays', v: { who: 'bot-asha', card: 'JS' } }])).toBe('Bot Asha plays the Jack of Spades.');
+    expect(scriptClips(book, [{ t: 'bid', v: { who: 'nobody', bid: '200' } }])).toBeNull();
+  });
+
+  for (const numPlayers of PLAYER_COUNTS) {
+    it(`${numPlayers} players: events, instructions and results`, () => {
+      const names = Array.from({ length: numPlayers }, (_, i) => (i % 2 ? `Bot ${['Asha', 'Ravi', 'Meera', 'Kiran'][i % 4]}` : `P${i}`));
+      for (let seed = 1; seed <= 3; seed++) {
+        const g = new Game304(cfg({ numPlayers, matchTarget: 12 }), { rng: seededRng(seed * 7), dealer: seed % numPlayers });
+        const rng = seededRng(seed + 100);
+        let guard = 0;
+        while (g.phase !== 'matchOver') {
+          if (++guard > 20000) throw new Error('runaway');
+          if (g.phase === 'roundOver') {
+            g.nextRound();
+            continue;
+          }
+          const v = viewFor(g, g.turn);
+          g.apply(g.turn, rng() < 0.35 ? randomLegal(v, rng) ?? botDecide(v)! : botDecide(v)!);
+          const evs = g.drainEvents();
+          for (let s = 0; s < g.n; s++) {
+            const vs = viewFor(g, s);
+            for (const e of eventsFor(evs, s)) {
+              const spoken = describeEvent(e, names, s, vs, guard);
+              if (spoken) say(spoken.clips, e.kind);
+            }
+            say(voiceGuidance(vs, names, { isHost: s === 0 }), 'guidance');
+            say(voiceGuidance(vs, names, { ready: true }), 'guidance');
+          }
+        }
+      }
+    }, 120_000);
+  }
 });

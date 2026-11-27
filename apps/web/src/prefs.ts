@@ -1,15 +1,5 @@
 import { useSyncExternalStore } from 'react';
 
-/**
- * Game voice for announcements — exactly one channel, never doubled:
- *  - auto (default): the game voice speaks only when a screen reader is in use on this
- *    device (see srDetect.ts); sighted players get sound effects and on-screen text;
- *  - voice: game voice always on;
- *  - silent: game voice off;
- *  - screenReader: events go to the player's own screen reader instead of the game voice.
- */
-export type SpeechMode = 'auto' | 'voice' | 'silent' | 'screenReader';
-
 export interface Prefs {
   name: string;
   /** 0–100 for each audio channel. */
@@ -27,8 +17,12 @@ export interface Prefs {
   readChat: boolean;
   /** Turn-by-turn instructions: spoken by the game voice and shown on screen. */
   guidance: boolean;
-  /** Where game announcements go: screen reader live region, built-in voice, or both. */
-  speech: SpeechMode;
+  /**
+   * The game's own built-in voice (pre-recorded clips), on by default for everyone, with or
+   * without a screen reader. Off: announcements go to the screen reader and the captions only.
+   */
+  gameVoice: boolean;
+  /** Pace of the built-in voice (clip playback rate; pitch is kept). */
   speechRate: number;
   duck: boolean;
   pushToTalk: boolean;
@@ -63,8 +57,8 @@ const DEFAULTS: Prefs = {
   playIntro: true,
   readChat: true,
   guidance: true,
-  speech: 'auto',
-  speechRate: 1.1,
+  gameVoice: true,
+  speechRate: 1,
   duck: true,
   pushToTalk: false,
   theme: 'light',
@@ -81,7 +75,7 @@ const DEFAULTS: Prefs = {
 };
 
 const KEY = 'g304.prefs';
-const VERSION = 7;
+const VERSION = 8;
 
 function load(): Prefs {
   try {
@@ -97,6 +91,14 @@ function load(): Prefs {
         delete stored.speech;
         delete stored.askedScreenReader;
       }
+      // v8 (Issue 10): the built-in voice is on/off. Players who had chosen "Off" or
+      // "use my own screen reader instead" keep it off; everyone else gets it on.
+      if ((stored.v ?? 1) < 8) {
+        if (stored.speech === 'silent' || stored.speech === 'screenReader') stored.gameVoice = false;
+        const rate = ({ 0.8: 0.85, 1.1: 1, 1.5: 1.25, 2: 1.5 } as Record<number, number>)[stored.speechRate];
+        stored.speechRate = rate ?? 1;
+      }
+      delete stored.speech;
       // Older display switches → the design-system settings.
       if (stored.highContrast === true && !stored.theme) stored.theme = 'high-contrast';
       if (stored.largeText === true && !stored.textScale) stored.textScale = 1.25;
