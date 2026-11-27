@@ -1,3 +1,4 @@
+import { PUBLIC_URL } from '../config';
 import type { PlayerCount, RoomSettings, RoomSnapshot, SeatInfo } from '@g304/engine';
 import { cardsPerPlayer } from '@g304/engine';
 import { announcer } from '../announcer';
@@ -165,7 +166,7 @@ export function Lobby({ room }: { room: RoomSnapshot }) {
 }
 
 function InviteCard({ room }: { room: RoomSnapshot }) {
-  const link = `${window.location.origin}/?room=${room.code}`;
+  const link = `${PUBLIC_URL}/?room=${room.code}`;
   const spoken = room.code.split('').join(' ');
   const share = async () => {
     const text = `Join my Trick 304 game! Room code ${room.code}`;

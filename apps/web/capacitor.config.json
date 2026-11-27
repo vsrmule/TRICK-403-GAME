@@ -1,12 +1,12 @@
 {
   "appId": "com.trick304.app",
   "appName": "Trick 304",
-  "webDir": "dist",
+  "webDir": "dist-android",
   "server": {
-    "url": "https://trick304.live",
-    "cleartext": false
+    "androidScheme": "https",
+    "hostname": "localhost"
   },
-  "overrideUserAgent": "Trick304App/1.0 (Android; Capacitor)",
+  "appendUserAgent": "Trick304App/1.2",
   "android": {
     "backgroundColor": "#0A0F1C",
     "allowMixedContent": false
