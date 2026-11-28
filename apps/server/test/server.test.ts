@@ -339,7 +339,7 @@ describe('older installed apps and the Stop / Continue choice', () => {
     const token = `feat-${features}-${++n}-${Date.now()}`;
     const socket = connect(url, { auth: features === undefined ? { token } : { token, features }, transports: ['websocket'], forceNew: true });
     sockets.push(socket);
-    await new Promise((r) => socket.on('connect', r));
+    await new Promise<void>((r) => socket.on('connect', () => r()));
     const call = (ev: string, p: object = {}) => new Promise<{ ok: boolean; data?: string }>((r) => socket.emit(ev, p, r));
     const code = (await call('createRoom', { name: 'Old', settings: { numPlayers: 4, matchTarget: 100 } })).data!;
     expect(code).toMatch(/^\d{6}$/);
