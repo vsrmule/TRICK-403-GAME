@@ -193,13 +193,21 @@ export class Game304 {
     return jacks === 4 && sides.size === 1 ? [...sides][0] : null;
   }
 
-  /** A side whose players hold no card of `suit` right now, or null. */
-  sideWithoutSuit(suit: Suit): number | null {
-    for (let t = 0; t < this.teamCount; t++) {
-      let holds = false;
-      for (let s = 0; s < this.n && !holds; s++) if (this.team(s) === t && this.hands[s].some((c) => c.suit === suit)) holds = true;
-      if (!holds) return t;
+  /**
+   * Rule B sides: the teams; but with 3 players (owner decision) the bidder is one side and the
+   * two players stopping the bidder are the other, together.
+   */
+  trumpSides(): number[][] {
+    if (this.n === 3 && this.contract) {
+      const b = this.contract.bidder;
+      return [[b], [0, 1, 2].filter((s) => s !== b)];
     }
+    return Array.from({ length: this.teamCount }, (_, t) => Array.from({ length: this.n }, (_, s) => s).filter((s) => this.team(s) === t));
+  }
+
+  /** Rule B: a side (see trumpSides) whose players hold no card of `suit` right now, as its seats; or null. */
+  sideWithoutSuit(suit: Suit): number[] | null {
+    for (const side of this.trumpSides()) if (!side.some((s) => this.hands[s].some((c) => c.suit === suit))) return side;
     return null;
   }
 

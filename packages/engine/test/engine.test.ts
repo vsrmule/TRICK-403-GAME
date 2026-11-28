@@ -1353,3 +1353,36 @@ describe('Rule B: a side holds no card of the trump suit', () => {
     expect(cancels).toBeGreaterThanOrEqual(0);
   }, 120_000);
 });
+
+describe('Rule B with 3 players: the bidder against the two defenders together', () => {
+  // Seat 0 bids and hides a Heart. Seat 1 holds no Hearts, seat 2 does: the defenders together still hold trump.
+  const deal = (hands: string[]) => {
+    const g = new Game304(cfg({ numPlayers: 3, matchTarget: 30 }), { dealer: 2, rng: seededRng(3) });
+    rig(g, hands);
+    g.options.cancelOnNoTrump = true;
+    g.apply(0, { type: 'bid', value: 160 });
+    g.apply(1, { type: 'pass' });
+    g.apply(2, { type: 'pass' });
+    g.apply(0, { type: 'selectTrump', cardId: 'QH' });
+    g.drainEvents();
+    return g;
+  };
+  const reveal = (g: Game304) => {
+    while (g.turn !== 0) g.apply(g.turn, { type: 'play', cardId: g.legalCards(g.turn)[0].id });
+    g.apply(0, { type: 'revealTrump' });
+    return g.drainEvents().some((e) => e.kind === 'roundCancelled');
+  };
+
+  it('one defender without trump is not enough: no cancellation', () => {
+    const g = deal(['QH KH JS 9S AS 10S KS QS', 'JC 9C AC 10C KC QC JD 9D', 'JH 9H AH 10H AD 10D KD QD']);
+    expect(reveal(g)).toBe(false);
+    expect(g.phase).toBe('playing');
+  });
+
+  it('neither defender holds trump: cancelled', () => {
+    const g = deal(['QH KH JH 9H AH 10H JS 9S', 'JC 9C AC 10C KC QC JD 9D', 'AS 10S KS QS AD 10D KD QD']);
+    expect(reveal(g)).toBe(true);
+    expect(g.phase).toBe('bidding');
+    expect(g.scores).toEqual([0, 0, 0]);
+  });
+});

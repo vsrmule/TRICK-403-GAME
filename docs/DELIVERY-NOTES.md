@@ -262,7 +262,7 @@ a Self Coat called from the bidding screen, and both Stop and Continue.
   trump suit. Dealing again."). It is always read by the screen reader (also when the game voice says it) and shown in the captions and on the bidding panel
   of the fresh deal. Because it is a notice, apps installed before this change show and read it too.
 - Both rules are named settings (`RuleOptions.cancelOnAllJacks`, `cancelOnNoTrump`), on by default.
-- **Please check with the owner — how often Rule B fires.** "Holds no card" is checked against the cards in hand at the moment of the reveal. In bot
-  matches it cancelled the round at about 1 in 10 reveals with 4 or more players, 1 in 4 with 2 players, and about half of all reveals with 3 players
-  (each player is a side, and by the time trump is revealed one of them has often run out of it). If the owner meant "was dealt no card of the trump
-  suit", or wants Rule B only for team games, it is a one-line change.
+- **3 players (owner decision).** For Rule B the bidder is one side and the two players stopping the bidder are the other side together: the round is
+  cancelled only if the bidder holds no trump-suit card, or neither defender does. Rule A still treats each of the 3 players as a side.
+- How often Rule B cancels a round, measured in bot matches (cards in hand at the moment of the reveal): 2 players 23% of reveals, 3 players 7%,
+  4 and 6 players 12%, 8 players 9%, 12 players 6%.

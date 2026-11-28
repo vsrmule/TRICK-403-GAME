@@ -362,7 +362,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       <h3>Cancelled rounds</h3>
       <p>
         A round is cancelled, with no points to anyone, and dealt again with a new shuffle when: right after the deal, one team holds all four Jacks; or, when
-        trump is revealed, one team holds no card of the trump suit (any tricks already played are discarded). Everyone is told why.
+        trump is revealed, one team holds no card of the trump suit (any tricks already played are discarded). With 3 players, for this check the bidder is one
+        team and the two other players together are the other. Everyone is told why.
       </p>
       <h3>Scoring (game points)</h3>
       <ul className="list compact">
