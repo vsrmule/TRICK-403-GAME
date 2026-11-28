@@ -13,7 +13,7 @@ export interface LogEntry {
   kind: 'game' | 'chat' | 'system';
 }
 
-type Item = { text: string; voice: string; clips?: VoiceScript | null; kind: LogEntry['kind']; priority?: boolean; always?: boolean; done?: () => void };
+type Item = { text: string; voice: string; clips?: VoiceScript | null; kind: LogEntry['kind']; priority?: boolean; always?: boolean; alsoScreenReader?: boolean; done?: () => void };
 
 /**
  * The spoken event queue.
@@ -55,16 +55,16 @@ class Announcer {
    * Queue an announcement. `interrupt` jumps the queue (on-demand readouts, errors)
    * without discarding pending game events.
    */
-  say(msg: string | Spoken | null | undefined, opts: { interrupt?: boolean; always?: boolean; kind?: LogEntry['kind'] } = {}) {
+  say(msg: string | Spoken | null | undefined, opts: { interrupt?: boolean; always?: boolean; alsoScreenReader?: boolean; kind?: LogEntry['kind'] } = {}) {
     void this.sayAndWait(msg, opts);
   }
 
   /** Like `say`, resolving once this item has been fully spoken (used by the start sequence). */
-  sayAndWait(msg: string | Spoken | null | undefined, opts: { interrupt?: boolean; always?: boolean; kind?: LogEntry['kind'] } = {}): Promise<void> {
+  sayAndWait(msg: string | Spoken | null | undefined, opts: { interrupt?: boolean; always?: boolean; alsoScreenReader?: boolean; kind?: LogEntry['kind'] } = {}): Promise<void> {
     if (!msg) return Promise.resolve();
     const s = typeof msg === 'string' ? { text: msg, voice: msg } : msg;
     return new Promise((resolve) => {
-      const item: Item = { ...s, kind: opts.kind ?? 'game', priority: !!opts.interrupt, always: !!opts.always, done: resolve };
+      const item: Item = { ...s, kind: opts.kind ?? 'game', priority: !!opts.interrupt, always: !!opts.always, alsoScreenReader: !!opts.alsoScreenReader, done: resolve };
       if (opts.interrupt) {
         this.stopCurrent();
         this.queue.unshift(item);
@@ -150,6 +150,7 @@ class Announcer {
       return;
     }
 
+    if (item.alsoScreenReader) this.toLive(entry);
     activity.setAnnouncing(true);
     this.duck((urls.length * 1300) / (p.speechRate || 1));
     void gameVoice.play(urls, { rate: p.speechRate || 1, volume: p.announceVolume / 100 }).then(() => {

@@ -49,6 +49,8 @@ export function voiceEvent(e: GameEvent, names: Names, me: number | null, v: Pla
       return [r('roundStart', { round: String(e.round) }), r('deals', { who: W(e.dealer) }), ...(me !== null ? [r('handReady')] : [])];
     case 'redeal':
       return [r('redeal')];
+    case 'roundCancelled':
+      return null; // a table notice; the voice says it from the phrase book word for word
     case 'bid':
       if (e.action.type === 'pass') return [r('pass', { who: W(e.seat) })];
       if (e.action.type === 'challengeCoat') return [r('challengeCoat', { who: W(e.seat) })];

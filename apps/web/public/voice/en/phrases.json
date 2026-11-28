@@ -660,6 +660,24 @@
    "style": "excited"
   },
   {
+   "id": "cancelledJacks",
+   "chunks": [
+    {
+     "text": "Round cancelled: one team has all four Jacks. Dealing again."
+    }
+   ],
+   "style": "excited"
+  },
+  {
+   "id": "cancelledTrump",
+   "chunks": [
+    {
+     "text": "Round cancelled: one team has no card of the trump suit. Dealing again."
+    }
+   ],
+   "style": "excited"
+  },
+  {
    "id": "pass",
    "chunks": [
     {

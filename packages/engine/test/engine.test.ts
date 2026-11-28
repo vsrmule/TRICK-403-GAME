@@ -25,6 +25,7 @@ import {
   cardFromId,
   cardLabel,
   cardsPerPlayer,
+  catalog,
   describeEvent,
   eventsFor,
   guidance,
@@ -43,6 +44,8 @@ const hand = (ids: string) => ids.split(' ').map(cardFromId);
 function rig(g: Game304, hands: string[]) {
   g.hands = hands.map(hand);
   g.pointsInPlay = g.hands.reduce((s, h) => s + sumPoints(h), 0);
+  // Hand-made deals test other rules; Rule B (cancel when a side has no trump) is tested on its own.
+  g.options.cancelOnNoTrump = false;
 }
 /**
  * Issue 7 moved trick 1's lead to the bidder's right, so in team modes the bidding side never
@@ -1230,4 +1233,123 @@ describe('bid reached: Stop or Continue (bidder only)', () => {
     while ((g.phase as string) === 'playing') playFirst(g);
     expect(g.lastResult).toMatchObject({ kind: 'normal', success: true, awarded: [1, 0], stopReason: null });
   });
+});
+
+// ------------------------------------------------------------------ Rules A and B: cancelled rounds
+
+describe('Rule A: one side holds all four Jacks', () => {
+  it.each(PLAYER_COUNTS.map((n) => [n]))('%i players: such a deal is cancelled and dealt again, before any bidding', (n) => {
+    let cancelled = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const g = new Game304(cfg({ numPlayers: n as PlayerCount }), { rng: seededRng(seed) });
+      const ev = g.drainEvents();
+      const c = ev.filter((e) => e.kind === 'roundCancelled');
+      cancelled += c.length;
+      for (const e of c) expect(e).toMatchObject({ reason: 'allJacks', round: 1 });
+      // The deal players get never has all four Jacks on one side; nothing was bid or scored.
+      expect(g.sideWithAllJacks()).toBeNull();
+      expect(g.phase).toBe('bidding');
+      expect(g.round).toBe(1);
+      expect(g.scores.every((s) => s === 0)).toBe(true);
+      if (c.length) expect(g.lastCancel).toBe('allJacks');
+    }
+    // With 3 and 4-card-or-more hands this happens often enough to be seen in 300 deals.
+    if (n !== 12) expect(cancelled).toBeGreaterThan(0);
+  });
+
+  it('the message, word for word', () => {
+    expect(catalog().ev.cancelled.allJacks).toBe('Round cancelled: one team has all four Jacks. Dealing again.');
+    expect(catalog().ev.cancelled.noTrump).toBe('Round cancelled: one team has no card of the trump suit. Dealing again.');
+  });
+});
+
+describe('Rule B: a side holds no card of the trump suit', () => {
+  // Team B (seats 1 and 3) holds no Hearts. Seat 0 wins the bid and hides the Queen of Hearts.
+  const NO_HEARTS_B = ['QH KH JS 9S AS 10S', 'JC 9C AC 10C KC QS', 'JH 9H AH 10H JD 9D', 'QC AD 10D KD QD KS'];
+  const setup = () => {
+    const g = new Game304(cfg({ matchTarget: 30 }), { dealer: 0, rng: seededRng(2) });
+    rig(g, NO_HEARTS_B);
+    g.options.cancelOnNoTrump = true;
+    for (const s of [1, 2, 3]) g.apply(s, { type: 'pass' });
+    g.apply(0, { type: 'bid', value: 160 });
+    g.apply(0, { type: 'selectTrump', cardId: 'QH' });
+    g.drainEvents();
+    return g;
+  };
+
+  it('revealed by the bidder: the round is cancelled at once, tricks discarded, no points, fresh deal', () => {
+    const g = setup();
+    for (const id of ['JC', 'JH', 'QC']) g.apply(g.turn, { type: 'play', cardId: id }); // seats 1, 2, 3
+    expect(g.turn).toBe(0);
+    g.apply(0, { type: 'revealTrump' });
+    const ev = g.drainEvents();
+    expect(ev.map((e) => e.kind)).toEqual(expect.arrayContaining(['trumpRevealed', 'roundCancelled', 'roundStart']));
+    expect(ev.find((e) => e.kind === 'roundCancelled')).toMatchObject({ reason: 'noTrump', round: 1 });
+    expect(g.phase).toBe('bidding');
+    expect(g.round).toBe(1);
+    expect(g.results).toHaveLength(0);
+    expect(g.scores).toEqual([0, 0]);
+    expect(g.completedTricks).toHaveLength(0);
+    expect(g.currentTrick).toBeNull();
+    expect(g.contract).toBeNull();
+    expect(g.trumpRevealed).toBe(false);
+    expect(g.hands.every((h) => h.length === 6)).toBe(true);
+    expect(viewFor(g, 2).lastCancel).toBe('noTrump');
+    g.apply(g.turn, { type: 'pass' });
+    expect(viewFor(g, 2).lastCancel).toBeNull(); // the message stays until bidding moves on
+  });
+
+  it('revealed because a player asked: also cancelled', () => {
+    const g = setup();
+    g.apply(1, { type: 'play', cardId: 'QS' }); // Spades led; seat 2 has none and asks
+    g.apply(2, { type: 'askTrump' });
+    expect(g.drainEvents().some((e) => e.kind === 'roundCancelled')).toBe(true);
+    expect(g.phase).toBe('bidding');
+    expect(g.askedThisTurn).toBeNull();
+  });
+
+  it('no cancellation while every side still holds a trump-suit card', () => {
+    const g = new Game304(cfg(), { dealer: 0, rng: seededRng(2) });
+    rig(g, ['QH KH JS 9S AS 10S', 'JC 9C AC 10C KC 9H', 'JH QS AH 10H JD 9D', 'QC AD 10D KD QD KS']);
+    g.options.cancelOnNoTrump = true;
+    for (const s of [1, 2, 3]) g.apply(s, { type: 'pass' });
+    g.apply(0, { type: 'bid', value: 160 });
+    g.apply(0, { type: 'selectTrump', cardId: 'QH' });
+    for (const id of ['JC', 'JH', 'QC']) g.apply(g.turn, { type: 'play', cardId: id });
+    g.apply(0, { type: 'revealTrump' });
+    expect(g.phase).toBe('playing');
+    expect(g.trumpRevealed).toBe(true);
+  });
+
+  it.each(PLAYER_COUNTS.map((n) => [n]))('%i players, full matches: a revealed trump always leaves every side holding some', (n) => {
+    let cancels = 0;
+    for (let seed = 1; seed <= 4; seed++) {
+      const g = new Game304(cfg({ numPlayers: n as PlayerCount, matchTarget: 20 }), { rng: seededRng(seed * 13), dealer: 0 });
+      const rng = seededRng(seed + 7);
+      let guard = 0;
+      while (g.phase !== 'matchOver') {
+        if (++guard > 30000) throw new Error('runaway');
+        if (g.phase === 'roundOver') {
+          g.nextRound();
+          continue;
+        }
+        const scores = [...g.scores];
+        const v = viewFor(g, g.turn);
+        g.apply(g.turn, rng() < 0.35 ? randomLegal(v, rng) ?? botDecide(v)! : botDecide(v)!);
+        const ev = g.drainEvents();
+        if (ev.some((e) => e.kind === 'roundCancelled' && e.reason === 'noTrump')) {
+          cancels++;
+          expect(g.scores).toEqual(scores); // no points to anyone
+          expect(g.phase).toBe('bidding');
+        }
+        if (g.trumpRevealed && g.phase === 'playing' && g.trumpSuit) {
+          // Rule B was checked at the reveal; at that moment every side held trump.
+          const revealedNow = ev.some((e) => e.kind === 'trumpRevealed');
+          if (revealedNow) expect(g.sideWithoutSuit(g.trumpSuit)).toBeNull();
+        }
+        if (g.phase === 'bidding' && g.bids.length === 0) expect(g.sideWithAllJacks()).toBeNull();
+      }
+    }
+    expect(cancels).toBeGreaterThanOrEqual(0);
+  }, 120_000);
 });

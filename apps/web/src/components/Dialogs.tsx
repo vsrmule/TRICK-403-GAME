@@ -359,6 +359,11 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         the bidding side reaches its bid, the bidder is asked once: "Your team has already reached its bid. Would you like to continue the game?" Stop ends the
         round now (made). Continue plays on, so your side can still call Coat if it has won every trick so far. The round score is shown and spoken after every trick. Trump is the whole trump suit: every card of that suit is trump.
       </p>
+      <h3>Cancelled rounds</h3>
+      <p>
+        A round is cancelled, with no points to anyone, and dealt again with a new shuffle when: right after the deal, one team holds all four Jacks; or, when
+        trump is revealed, one team holds no card of the trump suit (any tricks already played are discarded). Everyone is told why.
+      </p>
       <h3>Scoring (game points)</h3>
       <ul className="list compact">
         <li>Band 1 bids (160–190): made +1; stopped, opponents +2.</li>

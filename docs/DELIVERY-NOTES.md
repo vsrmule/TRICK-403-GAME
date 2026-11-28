@@ -249,3 +249,20 @@ a Self Coat called from the bidding screen, and both Stop and Continue.
 - The app now tells players when a newer APK is on the website ("A new version of Trick 304 is available" with Download update and Later),
   checked at launch, on returning to the app and every 30 minutes. Apps before 1.4 can't show it: those players update by hand once.
 - Older apps that lack the Stop / Continue buttons can't hold up a game: the server chooses Stop for them, as before, and says why.
+
+# Cancelled rounds (Rules A and B)
+
+- **Rule A.** Right after every deal (and every re-deal), if one side holds all four Jacks the round is cancelled before any bidding and dealt again
+  with a new shuffle. With 3 players each player is a side; in the 4-player short game the Jacks left out of the deal don't count.
+- **Rule B.** Whenever trump is revealed (by the bidder, or because a player asked; the bidder reveals in both cases), if any side holds no card of the
+  trump suit at that moment, the round is cancelled: tricks discarded, no points to anyone, dealt again with a new shuffle. Self Coat has no trump, so
+  Rule B never applies to it.
+- Like the existing "everyone passed" re-deal, the round number stays the same and the next player deals.
+- Everyone gets the message, word for word, as a table notice ("Round cancelled: one team has all four Jacks. Dealing again." / "... has no card of the
+  trump suit. Dealing again."). It is always read by the screen reader (also when the game voice says it) and shown in the captions and on the bidding panel
+  of the fresh deal. Because it is a notice, apps installed before this change show and read it too.
+- Both rules are named settings (`RuleOptions.cancelOnAllJacks`, `cancelOnNoTrump`), on by default.
+- **Please check with the owner — how often Rule B fires.** "Holds no card" is checked against the cards in hand at the moment of the reveal. In bot
+  matches it cancelled the round at about 1 in 10 reveals with 4 or more players, 1 in 4 with 2 players, and about half of all reveals with 3 players
+  (each player is a side, and by the time trump is revealed one of them has often run out of it). If the owner meant "was dealt no card of the trump
+  suit", or wants Rule B only for team games, it is a one-line change.

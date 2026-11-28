@@ -36,6 +36,8 @@ export interface Catalog {
     /** To everyone else while the bidder decides. */
     bidReachedWait: (side: string, bid: string, bidder: string) => string[];
     continued: (who: string) => string[];
+    /** Round cancelled and dealt again (exact wording from the game owner). */
+    cancelled: { allJacks: string; noTrump: string };
     trumpChosen: (who: string) => string[];
     yourTrump: (card: string, suit: string) => string[];
     firstLead: (bidder: string, leader: string) => string[];
@@ -138,6 +140,10 @@ const en: Catalog = {
     bidReachedChoice: () => ['Your team has already reached its bid. Would you like to continue the game?'],
     bidReachedWait: (side, bid, b) => [`${side} reached the bid of ${bid}. Waiting for ${b}.`],
     continued: (w) => [`${w} chose to continue. Play on!`],
+    cancelled: {
+      allJacks: 'Round cancelled: one team has all four Jacks. Dealing again.',
+      noTrump: 'Round cancelled: one team has no card of the trump suit. Dealing again.',
+    },
     trumpChosen: (w) => [`${w} has placed the trump card.`, `${w} has placed the trump card. It stays hidden.`],
     yourTrump: (c, s) => [`You placed the ${c} as your trump card. Trump is ${s}. Only you know it. You can still play this card.`],
     firstLead: (b, l) => [`${b} ${b === 'You' ? 'are' : 'is'} the bidder. ${vs(l, 'lead')} the first trick.`],

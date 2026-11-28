@@ -61,6 +61,8 @@ PHRASES = [
     P('deals', W('{who} deals.', 'You deal.')),
     P('handReady', 'Your hand is ready.'),
     P('redeal', 'Everyone passed!', 'Fresh deal coming!', style=E),
+    P('cancelledJacks', 'Round cancelled: one team has all four Jacks. Dealing again.', style=E),
+    P('cancelledTrump', 'Round cancelled: one team has no card of the trump suit. Dealing again.', style=E),
     P('pass', W('{who} passes.', 'You pass.')),
     P('bid', W('{who} bids', 'You bid'), X('{bid}!')),
     P('challengeCoat', W('{who} calls Challenge Coat!', 'You call Challenge Coat!'), 'Every trick must be won!', style=E),

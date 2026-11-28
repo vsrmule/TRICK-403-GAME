@@ -282,6 +282,13 @@ function ActionPanel({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
 
       {v.phase === 'bidding' && (
         <>
+          {v.lastCancel && (
+            <p className="callout">
+              {v.lastCancel === 'allJacks'
+                ? 'Round cancelled: one team has all four Jacks. Dealing again.'
+                : 'Round cancelled: one team has no card of the trump suit. Dealing again.'}
+            </p>
+          )}
           {myTurn && L ? <BidControls v={v} /> : !guide && <p>Waiting for {who(room, v.turn)} to bid.</p>}
           {v.bids.length > 0 && (
             <details>

@@ -63,6 +63,10 @@ export interface RuleOptions {
   coatCoversCallingTrick: boolean;
   /** Challenge Coat result replaces the normal bid scoring for the round. */
   challengeCoatReplacesBid: boolean;
+  /** Rule A: after the deal, one side holding all four Jacks cancels the round (dealt again). */
+  cancelOnAllJacks: boolean;
+  /** Rule B: when trump is revealed, a side holding no card of the trump suit cancels the round. */
+  cancelOnNoTrump: boolean;
 }
 
 export const DEFAULT_RULE_OPTIONS: RuleOptions = {
@@ -70,6 +74,8 @@ export const DEFAULT_RULE_OPTIONS: RuleOptions = {
   askerMustPlayTrump: true,
   coatCoversCallingTrick: true,
   challengeCoatReplacesBid: true,
+  cancelOnAllJacks: true,
+  cancelOnNoTrump: true,
 };
 
 /** Every legal bid value, in order: 160, 170 … 300, 304. */

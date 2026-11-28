@@ -46,7 +46,8 @@ function handleUpdate(u: RoomUpdate | null, prevCode: { current: string | null }
     lastChatId = room.chat.length ? room.chat[room.chat.length - 1].id : 0; // don't read old history aloud
   }
   // The "Joined room …" line already covers the first update's own notices (e.g. "You created room …").
-  if (!firstUpdate) for (const n of u.notices) announcer.say(n, { kind: 'system' });
+  // A cancelled round is always also read by the screen reader, even when the game voice says it.
+  if (!firstUpdate) for (const n of u.notices) announcer.say(n, { kind: 'system', alsoScreenReader: /^Round cancelled:/.test(n) });
 
   const v = room.view;
   // "Still waiting for …": one gentle reminder if another person takes a long time.

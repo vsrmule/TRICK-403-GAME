@@ -4,6 +4,7 @@ import {
   Action,
   BidAction,
   BidRecord,
+  CancelReason,
   CoatInfo,
   CompletedTrick,
   Contract,
@@ -103,6 +104,8 @@ export class Game304 {
   results: RoundResult[] = [];
   matchWinners: number[] | null = null;
   redeals = 0;
+  /** The last cancellation, shown with the fresh deal until the first bid. */
+  lastCancel: CancelReason | null = null;
 
   private pending: GameEvent[] = [];
 
@@ -140,7 +143,10 @@ export class Game304 {
   // ---------------------------------------------------------------- round flow
 
   private startRound(isRedeal: boolean) {
-    if (!isRedeal) this.round++;
+    if (!isRedeal) {
+      this.round++;
+      this.lastCancel = null;
+    }
     this.dealer = this.next(this.dealer);
     const deck = shuffle(fullDeck(), this.rng);
     this.hands = Array.from({ length: this.n }, () => [] as Card[]);
@@ -150,6 +156,8 @@ export class Game304 {
       seat = this.next(seat);
     }
     this.pointsInPlay = this.hands.reduce((s, h) => s + sumPoints(h), 0);
+    // Rule A: one side holding all four Jacks cancels the deal at once (no bidding, no tricks).
+    if (this.options.cancelOnAllJacks && this.sideWithAllJacks() !== null) return this.cancelRound('allJacks');
     this.bids = [];
     this.passed = new Array(this.n).fill(false);
     this.highBid = null;
@@ -168,6 +176,39 @@ export class Game304 {
     this.turn = this.next(this.dealer);
     this.emit({ kind: 'roundStart', round: this.round, dealer: this.dealer, firstBidder: this.turn, cardsEach: this.cardsEach });
     this.emit({ kind: 'turn', seat: this.turn, phase: 'bidding' });
+  }
+
+  /** The side that holds all four Jacks, or null. */
+  sideWithAllJacks(): number | null {
+    const sides = new Set<number>();
+    let jacks = 0;
+    this.hands.forEach((h, seat) =>
+      h.forEach((c) => {
+        if (c.rank === 'J') {
+          jacks++;
+          sides.add(this.team(seat));
+        }
+      }),
+    );
+    return jacks === 4 && sides.size === 1 ? [...sides][0] : null;
+  }
+
+  /** A side whose players hold no card of `suit` right now, or null. */
+  sideWithoutSuit(suit: Suit): number | null {
+    for (let t = 0; t < this.teamCount; t++) {
+      let holds = false;
+      for (let s = 0; s < this.n && !holds; s++) if (this.team(s) === t && this.hands[s].some((c) => c.suit === suit)) holds = true;
+      if (!holds) return t;
+    }
+    return null;
+  }
+
+  /** Cancel the round: tricks so far are discarded, nobody scores, and a fresh shuffle is dealt. */
+  private cancelRound(reason: CancelReason) {
+    this.emit({ kind: 'roundCancelled', round: this.round, reason });
+    this.lastCancel = reason;
+    this.redeals++;
+    this.startRound(true);
   }
 
   nextRound() {
@@ -257,6 +298,7 @@ export class Game304 {
   private doBid(seat: number, action: BidAction) {
     if (this.phase !== 'bidding') throw new GameError('Not the bidding phase');
     if (this.passed[seat]) throw new GameError('You already passed');
+    this.lastCancel = null;
     if (action.type === 'bid') {
       const v = action.value;
       if (!Number.isInteger(v) || !isLegalBidValue(v)) {
@@ -408,19 +450,25 @@ export class Game304 {
     return this.phase === 'playing' && this.turn === seat && this.trumpHiddenNow() && this.contract!.bidder === seat;
   }
 
-  private reveal(by: number, how: 'asked' | 'bidder') {
+  /** Reveal trump. Returns false if the round was cancelled by Rule B. */
+  private reveal(by: number, how: 'asked' | 'bidder'): boolean {
     const bidder = this.contract!.bidder;
     this.trumpRevealed = true;
     this.trumpRevealedBy = by;
     this.emit({ kind: 'trumpRevealed', seat: by, bidder, suit: this.trumpSuit!, how });
+    // Rule B: if a side now holds no card of the trump suit, the round is cancelled and dealt again.
+    if (this.options.cancelOnNoTrump && this.sideWithoutSuit(this.trumpSuit!) !== null) {
+      this.cancelRound('noTrump');
+      return false;
+    }
+    return true;
   }
 
   private askTrump(seat: number) {
     if (!this.canAskTrump(seat)) throw new GameError('You can ask for trump only when you have no card of the led suit and trump is hidden');
     this.emit({ kind: 'trumpAsked', seat, bidder: this.contract!.bidder });
     // The bidder must reveal immediately; the server enforces it.
-    this.reveal(seat, 'asked');
-    this.askedThisTurn = seat;
+    if (this.reveal(seat, 'asked')) this.askedThisTurn = seat;
   }
 
   private revealTrump(seat: number) {

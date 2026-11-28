@@ -16,6 +16,7 @@ import {
   RoomSnapshot,
   SeatInfo,
   botDecide,
+  catalog,
   eventsFor,
   viewFor,
 } from '@g304/engine';
@@ -566,6 +567,9 @@ export class RoomManager {
   /** Publish pending engine events and (re)schedule bots/timers. */
   private flush(room: Room, notices: string[]) {
     const events = room.game ? room.game.drainEvents() : [];
+    // Round cancelled (four Jacks / no trump): a notice, so every installed app shows and reads it.
+    const L = catalog();
+    for (const e of events) if (e.kind === 'roundCancelled') notices = [...notices, L.ev.cancelled[e.reason]];
     this.schedule(room);
     this.publish(room, events, notices);
   }

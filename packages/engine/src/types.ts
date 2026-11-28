@@ -116,10 +116,19 @@ export type StopReason = 'bidReached' | 'bidImpossible' | 'coatFailed' | 'challe
 
 export type RevealKind = 'asked' | 'bidder';
 
+/**
+ * Why a round was cancelled and dealt again (no points to anyone):
+ * allJacks — after the deal, one side holds all four Jacks;
+ * noTrump — when trump is revealed, one side holds no card of the trump suit.
+ */
+export type CancelReason = 'allJacks' | 'noTrump';
+
 /** Structured events. `to` restricts an event to one seat (private info). */
 export type GameEvent = { to?: number } & (
   | { kind: 'roundStart'; round: number; dealer: number; firstBidder: number; cardsEach: number }
   | { kind: 'redeal'; round: number; dealer: number }
+  /** The round was cancelled (see CancelReason); a fresh deal follows at once. */
+  | { kind: 'roundCancelled'; round: number; reason: CancelReason }
   | { kind: 'bid'; seat: number; action: BidAction }
   | { kind: 'biddingWon'; seat: number; contract: Contract }
   /** Public: the bidder has chosen trump (the suit stays secret). */

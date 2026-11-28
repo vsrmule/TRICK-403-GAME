@@ -2,6 +2,7 @@ import { Card, SUIT_NAMES, Suit, sortHand } from './cards';
 import { Game304, teamOf } from './game';
 import {
   BidRecord,
+  CancelReason,
   CoatInfo,
   CompletedTrick,
   Contract,
@@ -61,6 +62,8 @@ export interface PlayerView {
   currentTrick: Trick | null;
   completedTricks: CompletedTrick[];
   coat: CoatInfo | null;
+  /** Why the previous deal was cancelled (until the first bid of the fresh deal), else null. */
+  lastCancel: CancelReason | null;
   /** Self Coat: true for the caller's teammates, who sit out the hand. */
   sittingOut: boolean[];
   scores: number[];
@@ -104,6 +107,7 @@ export function viewFor(g: Game304, seat: number | null): PlayerView {
     currentTrick: g.currentTrick ? mask(clone(g.currentTrick)) : null,
     completedTricks: clone(g.completedTricks).map(mask),
     coat: clone(g.coat),
+    lastCancel: g.lastCancel,
     sittingOut: Array.from({ length: g.n }, (_, s) => g.sittingOut(s)),
     scores: [...g.scores],
     lastResult: clone(g.lastResult),

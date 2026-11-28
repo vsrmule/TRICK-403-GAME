@@ -71,6 +71,8 @@ function describeEventText(e: GameEvent, names: Names, me: number | null, v: Pla
       return one(L.ev.roundStart(e.round, W(e.dealer), e.cardsEach, me !== null), seed);
     case 'redeal':
       return one(L.ev.redeal(), seed);
+    case 'roundCancelled':
+      return null; // sent to everyone as a table notice by the server, so every app version shows it
     case 'bid':
       if (e.action.type === 'pass') return one(L.ev.pass(W(e.seat)), seed);
       if (e.action.type === 'challengeCoat') return one(L.ev.challengeCoat(W(e.seat)), seed);
