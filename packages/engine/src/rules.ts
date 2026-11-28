@@ -34,10 +34,12 @@ export interface RuleSet {
   };
   bands: Band[];
   challengeCoat: { win: number; lose: number };
+  /** Self Coat: the caller alone must win every trick, no trump. */
+  selfCoat: { win: number; lose: number };
 }
 
 export const RULES: RuleSet = {
-  cardsPerPlayer: { 2: 12, 3: 8, 4: 6, 6: 4, 8: 3 },
+  cardsPerPlayer: { 2: 12, 3: 8, 4: 6, 6: 4, 8: 3, 12: 2 },
   fourCardOption: 4,
   bidding: { min: 160, step: 10, maxStepped: 300, top: 304, namedFrom: 200 },
   bands: [
@@ -45,6 +47,7 @@ export const RULES: RuleSet = {
     { id: 2, min: 200, max: 304, win: 2, lose: 4, coatWin: 2 + 3, coatLose: 10 },
   ],
   challengeCoat: { win: 6, lose: 12 },
+  selfCoat: { win: 10, lose: 20 },
 };
 
 /**

@@ -18,7 +18,11 @@ export interface LegalInfo {
   /** Numeric bids allowed right now (160…300, 304), ascending. */
   bidOptions: number[];
   canChallengeCoat: boolean;
+  /** Self Coat: a bidding call on your turn (play alone, no trump, win every trick). */
+  canSelfCoat: boolean;
   canSelectTrump: boolean;
+  /** The bidder, once the bid is reached: choose Stop or Continue. */
+  canChooseContinue: boolean;
   /** Card ids that may be played now. */
   playable: string[];
   /** Reason each non-playable card in hand is disabled. */
@@ -57,6 +61,8 @@ export interface PlayerView {
   currentTrick: Trick | null;
   completedTricks: CompletedTrick[];
   coat: CoatInfo | null;
+  /** Self Coat: true for the caller's teammates, who sit out the hand. */
+  sittingOut: boolean[];
   scores: number[];
   lastResult: RoundResult | null;
   matchWinners: number[] | null;
@@ -98,6 +104,7 @@ export function viewFor(g: Game304, seat: number | null): PlayerView {
     currentTrick: g.currentTrick ? mask(clone(g.currentTrick)) : null,
     completedTricks: clone(g.completedTricks).map(mask),
     coat: clone(g.coat),
+    sittingOut: Array.from({ length: g.n }, (_, s) => g.sittingOut(s)),
     scores: [...g.scores],
     lastResult: clone(g.lastResult),
     matchWinners: g.matchWinners ? [...g.matchWinners] : null,
@@ -114,7 +121,9 @@ function legalFor(g: Game304, seat: number): LegalInfo {
   for (const c of g.hands[seat]) {
     if (playable.includes(c.id)) continue;
     let reason: string;
-    if (g.phase === 'trumpSelect') reason = myTurn ? 'Choose as your hidden trump card' : 'Waiting for trump selection';
+    if (g.sittingOut(seat)) reason = 'You sit out this hand: your teammate plays Self Coat alone';
+    else if (g.phase === 'trumpSelect') reason = myTurn ? 'Choose as your hidden trump card' : 'Waiting for trump selection';
+    else if (g.phase === 'continueChoice') reason = myTurn ? 'Choose Stop or Continue first' : 'Waiting for the bidder to choose';
     else if (g.phase === 'bidding') reason = 'Bidding in progress';
     else if (g.phase !== 'playing') reason = 'Round over';
     else if (!myTurn) reason = 'Not your turn';
@@ -124,13 +133,15 @@ function legalFor(g: Game304, seat: number): LegalInfo {
     disabledReasons[c.id] = reason;
   }
   const isBiddingSide = g.contract ? g.team(seat) === g.team(g.contract.bidder) || g.options.coatCallers === 'anyone' : false;
-  const coatShow = g.phase === 'playing' && myTurn && isBiddingSide && g.contract?.type !== 'challengeCoat' && !g.coat;
+  const coatShow = g.phase === 'playing' && myTurn && isBiddingSide && g.contract?.type === 'normal' && !g.coat;
   const coatReason = coatShow ? g.coatBlock(seat) : null;
   return {
     canPass: bidding,
     bidOptions: bidding ? g.availableBids() : [],
     canChallengeCoat: bidding && g.challengeCoatBlock(seat) === null,
+    canSelfCoat: bidding && g.selfCoatBlock(seat) === null,
     canSelectTrump: g.phase === 'trumpSelect' && myTurn,
+    canChooseContinue: g.phase === 'continueChoice' && myTurn,
     playable,
     disabledReasons,
     canAskTrump: g.canAskTrump(seat),

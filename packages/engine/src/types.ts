@@ -1,8 +1,8 @@
 import type { Card, Suit } from './cards';
 import type { RuleOptions } from './rules';
 
-export type PlayerCount = 2 | 3 | 4 | 6 | 8;
-export const PLAYER_COUNTS: PlayerCount[] = [2, 3, 4, 6, 8];
+export type PlayerCount = 2 | 3 | 4 | 6 | 8 | 12;
+export const PLAYER_COUNTS: PlayerCount[] = [2, 3, 4, 6, 8, 12];
 
 export interface GameConfig {
   numPlayers: PlayerCount;
@@ -20,18 +20,20 @@ export const DEFAULT_CONFIG: GameConfig = {
   fourCardMode: false,
 };
 
-export type ContractType = 'normal' | 'challengeCoat';
+/** selfCoat: the caller plays alone (teammates sit out), no trump, must win every trick. */
+export type ContractType = 'normal' | 'challengeCoat' | 'selfCoat';
 
 export interface Contract {
   bidder: number;
   type: ContractType;
-  /** Bid value (160…304). For Challenge Coat, the highest numeric bid made before it, or the minimum. */
+  /** Bid value (160…304). For Challenge Coat and Self Coat, the highest numeric bid made before it, or the minimum. */
   value: number;
 }
 
-export type Phase = 'bidding' | 'trumpSelect' | 'playing' | 'roundOver' | 'matchOver';
+/** continueChoice: the bidding side has reached its bid; the bidder chooses Stop or Continue. */
+export type Phase = 'bidding' | 'trumpSelect' | 'playing' | 'continueChoice' | 'roundOver' | 'matchOver';
 
-export type BidAction = { type: 'bid'; value: number } | { type: 'pass' } | { type: 'challengeCoat' };
+export type BidAction = { type: 'bid'; value: number } | { type: 'pass' } | { type: 'challengeCoat' } | { type: 'selfCoat' };
 
 export type Action =
   | BidAction
@@ -42,7 +44,11 @@ export type Action =
   /** The bidder reveals trump himself (when void in the led suit). */
   | { type: 'revealTrump' }
   /** Coat: called during play by the bidding side (D1), trick 1 … N−1. */
-  | { type: 'coat' };
+  | { type: 'coat' }
+  /** The bidder, once the bid is reached: play on (Coat can still be called) … */
+  | { type: 'continueRound' }
+  /** … or stop the round now, scored as a made bid. */
+  | { type: 'stopRound' };
 
 export interface BidRecord {
   seat: number;
@@ -68,7 +74,7 @@ export interface CompletedTrick extends Trick {
   points: number;
 }
 
-export type CallKind = 'normal' | 'coat' | 'challengeCoat';
+export type CallKind = 'normal' | 'coat' | 'challengeCoat' | 'selfCoat';
 
 export interface CoatInfo {
   seat: number;
@@ -101,12 +107,12 @@ export interface RoundResult {
    * Why the round stopped early (CR v5), or null if all tricks were played:
    * bidReached — the bidding side reached its bid (made);
    * bidImpossible — the bidding side can no longer reach its bid (stopped);
-   * coatFailed / challengeCoatFailed — the calling side lost a trick.
+   * coatFailed / challengeCoatFailed / selfCoatFailed — the calling side lost a trick.
    */
   stopReason: StopReason | null;
 }
 
-export type StopReason = 'bidReached' | 'bidImpossible' | 'coatFailed' | 'challengeCoatFailed';
+export type StopReason = 'bidReached' | 'bidImpossible' | 'coatFailed' | 'challengeCoatFailed' | 'selfCoatFailed';
 
 export type RevealKind = 'asked' | 'bidder';
 
@@ -127,8 +133,12 @@ export type GameEvent = { to?: number } & (
   | { kind: 'trumpAsked'; seat: number; bidder: number }
   | { kind: 'trumpRevealed'; seat: number; bidder: number; suit: Suit; how: RevealKind }
   | { kind: 'cardPlayed'; seat: number; card: Card; asTrump: boolean; trickIndex: number }
-  | { kind: 'trickWon'; seat: number; team: number; points: number; trickIndex: number; captured: number[]; bid: number; bidderTeam: number }
+  | { kind: 'trickWon'; seat: number; team: number; points: number; trickIndex: number; captured: number[]; bid: number; bidderTeam: number; selfCoat?: boolean }
   | { kind: 'coat'; seat: number; team: number; trickIndex: number }
+  /** The bidding side reached its bid; `seat` (the bidder) now chooses Stop or Continue. */
+  | { kind: 'bidReached'; seat: number; team: number; bid: number }
+  /** The bidder chose to play on after reaching the bid. */
+  | { kind: 'continued'; seat: number }
   | { kind: 'turn'; seat: number; phase: Phase }
   | { kind: 'roundOver'; result: RoundResult; scores: number[] }
   | { kind: 'matchOver'; winners: number[]; scores: number[] }

@@ -13,6 +13,10 @@
    "s6": "Seat 6",
    "s7": "Seat 7",
    "s8": "Seat 8",
+   "s9": "Seat 9",
+   "s10": "Seat 10",
+   "s11": "Seat 11",
+   "s12": "Seat 12",
    "bot-asha": "Bot Asha",
    "bot-ravi": "Bot Ravi",
    "bot-meera": "Bot Meera",
@@ -21,6 +25,10 @@
    "bot-arun": "Bot Arun",
    "bot-lata": "Bot Lata",
    "bot-vijay": "Bot Vijay",
+   "bot-gita": "Bot Gita",
+   "bot-mohan": "Bot Mohan",
+   "bot-usha": "Bot Usha",
+   "bot-sunil": "Bot Sunil",
    "team-a": "Team A",
    "team-b": "Team B"
   },
@@ -559,7 +567,15 @@
    "9": "9",
    "10": "10",
    "11": "11",
-   "12": "12"
+   "12": "12",
+   "13": "13",
+   "14": "14",
+   "15": "15",
+   "16": "16",
+   "17": "17",
+   "18": "18",
+   "19": "19",
+   "20": "20"
   }
  },
  "phrases": [
@@ -697,6 +713,111 @@
     {
      "text": "{who} plays Challenge Coat!",
      "you": "You play Challenge Coat!"
+    }
+   ],
+   "style": "excited"
+  },
+  {
+   "id": "selfCoat",
+   "chunks": [
+    {
+     "text": "{who} calls Self Coat!",
+     "you": "You call Self Coat!"
+    },
+    {
+     "text": "Playing alone, with no trump. Every trick must be won!"
+    }
+   ],
+   "style": "excited"
+  },
+  {
+   "id": "biddingWonSelf",
+   "chunks": [
+    {
+     "text": "{who} plays Self Coat!",
+     "you": "You play Self Coat!"
+    },
+    {
+     "text": "No trump this hand."
+    }
+   ],
+   "style": "excited"
+  },
+  {
+   "id": "teammatesSitOut",
+   "chunks": [
+    {
+     "text": "The teammates sit out."
+    }
+   ]
+  },
+  {
+   "id": "stopSelfFailed",
+   "chunks": [
+    {
+     "text": "Self Coat failed!"
+    },
+    {
+     "text": "{who} lost a trick.",
+     "you": "You lost a trick."
+    }
+   ],
+   "style": "excited"
+  },
+  {
+   "id": "madeSelf",
+   "chunks": [
+    {
+     "text": "{who} did it! Self Coat made!",
+     "you": "You did it! Self Coat made!"
+    }
+   ],
+   "style": "excited"
+  },
+  {
+   "id": "missedSelf",
+   "chunks": [
+    {
+     "text": "Stopped!"
+    },
+    {
+     "text": "{who} missed the Self Coat.",
+     "you": "You missed the Self Coat."
+    }
+   ],
+   "style": "excited"
+  },
+  {
+   "id": "bidReachedChoice",
+   "chunks": [
+    {
+     "text": "Your team has already reached its bid!"
+    },
+    {
+     "text": "Would you like to continue the game?"
+    }
+   ],
+   "style": "excited"
+  },
+  {
+   "id": "reachedBid",
+   "chunks": [
+    {
+     "text": "{who} reached the bid!",
+     "you": "You reached the bid!"
+    }
+   ],
+   "style": "excited"
+  },
+  {
+   "id": "continues",
+   "chunks": [
+    {
+     "text": "{who} continues!",
+     "you": "You continue!"
+    },
+    {
+     "text": "Play on!"
     }
    ],
    "style": "excited"
@@ -872,6 +993,16 @@
      "text": "{bid}."
     }
    ]
+  },
+  {
+   "id": "mustWinAll",
+   "chunks": [
+    {
+     "text": "{who} must win every trick!",
+     "you": "You must win every trick!"
+    }
+   ],
+   "style": "excited"
   },
   {
    "id": "coatAccepted",
@@ -1128,6 +1259,33 @@
    "chunks": [
     {
      "text": "You can also call Challenge Coat."
+    }
+   ],
+   "style": "friendly"
+  },
+  {
+   "id": "guideCanSelfCoat",
+   "chunks": [
+    {
+     "text": "You can also call Self Coat."
+    }
+   ],
+   "style": "friendly"
+  },
+  {
+   "id": "guideContinue",
+   "chunks": [
+    {
+     "text": "Choose Stop to end the round now, or Continue to play on."
+    }
+   ],
+   "style": "friendly"
+  },
+  {
+   "id": "guideSittingOut",
+   "chunks": [
+    {
+     "text": "You sit out this hand. Your teammate plays Self Coat alone. Your cards stay in your hand."
     }
    ],
    "style": "friendly"

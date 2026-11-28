@@ -10,6 +10,7 @@ const MODES: { n: PlayerCount; sub: string }[] = [
   { n: 4, sub: 'Two teams of two · 6 cards each' },
   { n: 6, sub: 'Two teams of three · 4 cards each' },
   { n: 8, sub: 'Two teams of four · 3 cards each' },
+  { n: 12, sub: 'Two teams of six · 2 cards each' },
 ];
 const TARGETS = Array.from({ length: 46 }, (_, i) => i + 5); // 5 … 50
 

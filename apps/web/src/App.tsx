@@ -51,7 +51,7 @@ function handleUpdate(u: RoomUpdate | null, prevCode: { current: string | null }
   // "Still waiting for …": one gentle reminder if another person takes a long time.
   if (waitTimer) clearTimeout(waitTimer);
   waitTimer = null;
-  if (v && v.seat !== null && v.turn !== v.seat && v.turn >= 0 && room.seats[v.turn]?.kind === 'human' && ['bidding', 'trumpSelect', 'playing'].includes(v.phase)) {
+  if (v && v.seat !== null && v.turn !== v.seat && v.turn >= 0 && room.seats[v.turn]?.kind === 'human' && ['bidding', 'trumpSelect', 'playing', 'continueChoice'].includes(v.phase)) {
     const text = `Still waiting for ${room.seats[v.turn].name}.`;
     const clips = voiceStillWaiting(v.turn, v.seat, names(room));
     waitTimer = window.setTimeout(() => announcer.say({ text, voice: text, clips }), STILL_WAITING_MS);
@@ -67,7 +67,7 @@ function handleUpdate(u: RoomUpdate | null, prevCode: { current: string | null }
           sfx.play('deal');
           break;
         case 'bid':
-          sfx.play(e.action.type === 'pass' ? 'pass' : e.action.type === 'challengeCoat' ? 'coat' : 'bid');
+          sfx.play(e.action.type === 'pass' ? 'pass' : e.action.type === 'challengeCoat' || e.action.type === 'selfCoat' ? 'coat' : 'bid');
           break;
         case 'trumpAsked':
           sfx.play('askTrump');
@@ -83,6 +83,12 @@ function handleUpdate(u: RoomUpdate | null, prevCode: { current: string | null }
           break;
         case 'coat':
           sfx.play('coat');
+          break;
+        case 'bidReached':
+          if (e.seat === me) {
+            sfx.play('turn');
+            if (p.haptics) navigator.vibrate?.(120);
+          }
           break;
         case 'turn':
           if (e.seat === me) {

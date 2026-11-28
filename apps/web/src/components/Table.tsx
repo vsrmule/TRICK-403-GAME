@@ -83,7 +83,9 @@ function StatusLine({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
   }, [left, myTurn, room.turnDeadline]);
 
   const trump =
-    v.trumpRevealed && v.trumpSuit
+    v.contract?.type === 'selfCoat'
+      ? 'Trump: none (Self Coat)'
+      : v.trumpRevealed && v.trumpSuit
       ? `Trump: ${SUIT_NAMES[v.trumpSuit]}`
       : v.trumpSuit
         ? `Your trump: ${SUIT_NAMES[v.trumpSuit]} (hidden from the others)`
@@ -93,9 +95,11 @@ function StatusLine({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
   // Only the bidder's device knows the suit before the reveal (Issue 6.6 / 6.7).
   const suit = v.trumpSuit;
   const contract = v.contract
-    ? v.contract.type === 'challengeCoat'
-      ? 'Challenge Coat'
-      : bidName(v.contract.value)
+    ? v.contract.type === 'selfCoat'
+      ? 'Self Coat'
+      : v.contract.type === 'challengeCoat'
+        ? 'Challenge Coat'
+        : bidName(v.contract.value)
     : v.highBid
       ? describeBid(v.highBid.action).replace(/^bid /, '')
       : '—';
@@ -148,7 +152,9 @@ function StatusLine({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
         <span>
           <span className="hud-k">Trump</span>
           <span className="hud-v">
-            {v.trumpRevealed && v.trumpSuit
+            {v.contract?.type === 'selfCoat'
+              ? 'None · Self Coat'
+              : v.trumpRevealed && v.trumpSuit
               ? SUIT_NAMES[v.trumpSuit]
               : v.trumpSuit
                 ? `Yours: ${SUIT_NAMES[v.trumpSuit]} · hidden`
@@ -190,11 +196,12 @@ function Seats({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
         {room.seats.map((s) => {
           const i = s.seat;
           const lastBid = [...v.bids].reverse().find((b) => b.seat === i);
-          const isTurn = v.turn === i && (v.phase === 'bidding' || v.phase === 'playing' || v.phase === 'trumpSelect');
+          const isTurn = v.turn === i && (v.phase === 'bidding' || v.phase === 'playing' || v.phase === 'trumpSelect' || v.phase === 'continueChoice');
           const bits: string[] = [];
           if (team) bits.push(sideName(room, v.teams[i]));
           if (i === v.dealer) bits.push('dealer');
-          if (v.contract?.bidder === i) bits.push('bidder');
+          if (v.contract?.bidder === i) bits.push(v.contract.type === 'selfCoat' ? 'Self Coat, playing alone' : 'bidder');
+          if (v.sittingOut[i]) bits.push('sitting out');
           if (v.phase === 'bidding' && lastBid) bits.push(describeBid(lastBid.action));
           const count = v.handCounts[i];
           if (v.phase === 'playing') bits.push(`${count} ${count === 1 ? 'card' : 'cards'}`);
@@ -265,7 +272,7 @@ function ActionPanel({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
   return (
     <section className="panel actions" aria-labelledby="act-h">
       <h2 id="act-h">
-        {v.phase === 'bidding' ? 'Bidding' : v.phase === 'trumpSelect' ? 'Choosing trump' : v.phase === 'playing' ? 'Your move' : v.phase === 'roundOver' ? 'Round result' : 'Match over'}
+        {v.phase === 'bidding' ? 'Bidding' : v.phase === 'trumpSelect' ? 'Choosing trump' : v.phase === 'playing' ? 'Your move' : v.phase === 'continueChoice' ? 'Bid reached' : v.phase === 'roundOver' ? 'Round result' : 'Match over'}
       </h2>
       {guide && (
         <p className={`guide${myTurn ? ' mine' : ''}`}>
@@ -291,6 +298,28 @@ function ActionPanel({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
         </>
       )}
 
+      {v.phase === 'continueChoice' &&
+        (L?.canChooseContinue ? (
+          <div className="continue-choice" role="group" aria-labelledby="continue-q">
+            <p id="continue-q" className="callout good">
+              Your team has already reached its bid. Would you like to continue the game?
+            </p>
+            <p className="hint">
+              Stop: the round ends now and your side scores the bid. Continue: play on; your side can still call Coat at the start of a trick if it has won every trick so far.
+            </p>
+            <div className="row wrap">
+              <button type="button" className="btn big" onClick={() => act('action', { action: { type: 'stopRound' } })}>
+                Stop
+              </button>
+              <button type="button" className="btn primary big" onClick={() => act('action', { action: { type: 'continueRound' } })}>
+                Continue
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p>Waiting for {who(room, v.turn)}.</p>
+        ))}
+
       {v.phase === 'trumpSelect' &&
         (L?.canSelectTrump ? (
           <p className="callout">You won the bid. Choose one card from your hand below as your hidden trump card. Its suit becomes trump. Only you will see it, and you can still play it.</p>
@@ -303,6 +332,7 @@ function ActionPanel({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
           <p>
             {!guide && (myTurn ? (L?.playable.length ? 'Your turn. Choose a card from your hand.' : 'Your turn.') : `Waiting for ${who(room, v.turn)}.`)}
             {v.contract?.type === 'challengeCoat' && ` Challenge Coat by ${who(room, v.contract.bidder)} is on.`}
+            {v.contract?.type === 'selfCoat' && ` Self Coat by ${who(room, v.contract.bidder)} is on: playing alone, no trump.`}
             {v.coat && ` Coat by ${who(room, v.coat.seat)} is on.`}
           </p>
           <div className="row wrap">
@@ -357,7 +387,7 @@ function ActionPanel({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
             <li>
               <span>Contract</span>
               <strong>
-                {v.lastResult.kind === 'challengeCoat' ? 'Challenge Coat' : `${bidName(v.lastResult.bidValue)}${v.lastResult.kind === 'coat' ? ' with Coat' : ''}`} · Band {v.lastResult.band}
+                {v.lastResult.kind === 'selfCoat' ? 'Self Coat' : v.lastResult.kind === 'challengeCoat' ? 'Challenge Coat' : `${bidName(v.lastResult.bidValue)}${v.lastResult.kind === 'coat' ? ' with Coat' : ''}`} · Band {v.lastResult.band}
               </strong>
             </li>
             {v.lastResult.trumpSuit && (
@@ -460,6 +490,18 @@ function BidControls({ v }: { v: PlayerView }) {
             }
           >
             Call Challenge Coat
+          </button>
+        )}
+        {L.canSelfCoat && (
+          <button
+            className="btn warn big"
+            onClick={() =>
+              window.confirm(
+                `Call Self Coat? You play alone: your teammates sit out, there is no trump, you lead the first trick and you must win every trick. Made: +${RULES.selfCoat.win}. Stopped: opponents +${RULES.selfCoat.lose}.`,
+              ) && bid({ type: 'selfCoat' })
+            }
+          >
+            Call Self Coat
           </button>
         )}
       </div>

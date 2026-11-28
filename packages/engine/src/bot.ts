@@ -11,6 +11,8 @@ export function botDecide(v: PlayerView): Action | null {
   if (v.seat === null || !v.legal || v.turn !== v.seat) return null;
   if (v.phase === 'bidding') return decideBid(v);
   if (v.phase === 'trumpSelect') return { type: 'selectTrump', cardId: chooseTrump(v.myHand).id };
+  // Bid reached: bots never call Coat, so playing on can't gain them anything. Stop.
+  if (v.phase === 'continueChoice') return { type: 'stopRound' };
   if (v.phase === 'playing') return decidePlay(v);
   return null;
 }
@@ -35,6 +37,8 @@ function decideBid(v: PlayerView): Action {
   const othersActive = v.passed.filter((p, i) => !p && i !== seat).length;
   // Avoid endless void rounds: the last player standing with no bid opens at the minimum.
   if (!v.highBid && othersActive === 0 && lowest !== undefined) return { type: 'bid', value: lowest };
+  // Self Coat only with a hand that cannot lose a trick when leading: nothing but Jacks.
+  if (L.canSelfCoat && v.myHand.length > 0 && v.myHand.every((c) => c.rank === 'J')) return { type: 'selfCoat' };
   if (lowest === undefined) return { type: 'pass' };
   const est = estimate(v);
   const partnerHigh = v.highBid && v.teams[v.highBid.seat] === v.teams[seat];
@@ -102,7 +106,7 @@ function decidePlay(v: PlayerView): Action {
   const current = trickLeader(plays, v.trumpRevealed ? trump : null)!;
   const partnerWinning = v.teams[current.seat] === myTeam;
   const trickPts = plays.reduce((s, p) => s + points(p.card), 0);
-  const lastToPlay = plays.length === v.config.numPlayers - 1;
+  const lastToPlay = plays.length === v.sittingOut.filter((x) => !x).length - 1;
 
   // Void in the led suit with valuable cards on the table: ask for trump.
   if (L.canAskTrump && !partnerWinning && trickPts >= 15) return { type: 'askTrump' };

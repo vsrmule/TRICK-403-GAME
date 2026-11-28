@@ -134,7 +134,7 @@ export function Felt({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
     const a = angle(seat);
     return { ['--dx' as string]: `${Math.round(Math.cos(a) * 90)}px`, ['--dy' as string]: `${Math.round(Math.sin(a) * 70)}px` };
   };
-  const live = v.phase === 'bidding' || v.phase === 'trumpSelect' || v.phase === 'playing';
+  const live = v.phase === 'bidding' || v.phase === 'trumpSelect' || v.phase === 'playing' || v.phase === 'continueChoice';
   const lastPlayed = shown && shown.winner === null ? shown.plays[shown.plays.length - 1]?.card.id : null;
 
   return (
@@ -148,6 +148,7 @@ export function Felt({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
           )}
           {v.phase === 'bidding' && <span className="felt-trick">Bidding</span>}
           {v.phase === 'trumpSelect' && <span className="felt-trick">Choosing trump</span>}
+          {v.phase === 'continueChoice' && <span className="felt-trick">Bid reached · Stop or Continue?</span>}
           {(v.phase === 'roundOver' || v.phase === 'matchOver') && !shown && <span className="felt-trick">Round {v.round} over</span>}
         </div>
 
@@ -173,7 +174,9 @@ export function Felt({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
           const speaking = i === v.seat ? vs.meSpeaking : !!s.memberId && vs.speaking.includes(s.memberId);
           const badges: string[] = [];
           if (i === v.dealer) badges.push('Dealer');
-          if (v.contract?.bidder === i) badges.push(v.contract.type === 'challengeCoat' ? 'Challenge Coat' : `Bidder · ${bidName(v.contract.value)}`);
+          if (v.contract?.bidder === i)
+            badges.push(v.contract.type === 'selfCoat' ? 'Self Coat' : v.contract.type === 'challengeCoat' ? 'Challenge Coat' : `Bidder · ${bidName(v.contract.value)}`);
+          if (v.sittingOut[i]) badges.push('Sitting out');
           if (v.coat?.seat === i) badges.push('Coat');
           return (
             <div
@@ -201,7 +204,7 @@ export function Felt({ room, v }: { room: RoomSnapshot; v: PlayerView }) {
                 {badges.length > 0 && <span className="seat-badge">{badges.join(' · ')}</span>}
                 {v.phase === 'bidding' && lastBid && (
                   <span key={v.bids.length} className={`bid-bubble${lastBid.action.type === 'pass' ? ' pass' : ''}`}>
-                    {lastBid.action.type === 'bid' ? bidName(lastBid.action.value) : lastBid.action.type === 'pass' ? 'Pass' : 'Challenge Coat'}
+                    {lastBid.action.type === 'bid' ? bidName(lastBid.action.value) : lastBid.action.type === 'pass' ? 'Pass' : lastBid.action.type === 'selfCoat' ? 'Self Coat' : 'Challenge Coat'}
                   </span>
                 )}
               </span>

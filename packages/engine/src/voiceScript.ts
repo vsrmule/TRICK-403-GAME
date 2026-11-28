@@ -13,7 +13,7 @@ import type { PlayerView } from './view';
 import type { VoiceRef, VoiceScript } from './voiceClips';
 
 /** Names the server gives bots in empty seats ("Bot Asha" …). */
-export const BOT_NAMES = ['Asha', 'Ravi', 'Meera', 'Kiran', 'Devi', 'Arun', 'Lata', 'Vijay'];
+export const BOT_NAMES = ['Asha', 'Ravi', 'Meera', 'Kiran', 'Devi', 'Arun', 'Lata', 'Vijay', 'Gita', 'Mohan', 'Usha', 'Sunil'];
 
 const r = (t: string, v?: Record<string, string>): VoiceRef => (v ? { t, v } : { t });
 
@@ -52,8 +52,10 @@ export function voiceEvent(e: GameEvent, names: Names, me: number | null, v: Pla
     case 'bid':
       if (e.action.type === 'pass') return [r('pass', { who: W(e.seat) })];
       if (e.action.type === 'challengeCoat') return [r('challengeCoat', { who: W(e.seat) })];
+      if (e.action.type === 'selfCoat') return [r('selfCoat', { who: W(e.seat) })];
       return [r('bid', { who: W(e.seat), bid: String(e.action.value) })];
     case 'biddingWon':
+      if (e.contract.type === 'selfCoat') return [r('biddingWonSelf', { who: W(e.seat) }), ...(n === 2 || n === 3 ? [] : [r('teammatesSitOut')])];
       return e.contract.type === 'challengeCoat'
         ? [r('biddingWonChallenge', { who: W(e.seat) })]
         : [r('biddingWon', { who: W(e.seat), bid: String(e.contract.value) })];
@@ -72,18 +74,22 @@ export function voiceEvent(e: GameEvent, names: Names, me: number | null, v: Pla
     case 'cardPlayed':
       return [r(e.asTrump ? 'trumps' : 'plays', { who: W(e.seat), card: cardKey(e.card) })];
     case 'trickWon': {
-      const teamMode = n === 4 || n === 6 || n === 8;
+      const teamMode = n === 4 || n === 6 || n === 8 || n === 12;
       return [
         r('takesTrick', { who: W(e.seat) }),
         num(e.points),
         teamMode ? r('pointsFor', { who: S(e.team) }) : r('points'),
         r('roundScore'),
         ...scoreScript(e.captured, n, me, names),
-        r('needs', { who: S(e.bidderTeam), bid: String(e.bid) }),
+        e.selfCoat ? r('mustWinAll', { who: S(e.bidderTeam) }) : r('needs', { who: S(e.bidderTeam), bid: String(e.bid) }),
       ];
     }
     case 'coat':
       return [r('coatAccepted'), r('needsEveryTrick', { who: S(e.team) })];
+    case 'bidReached':
+      return e.seat === me ? [r('bidReachedChoice')] : [r('reachedBid', { who: S(e.team) }), r('waitingFor', { who: W(e.seat) })];
+    case 'continued':
+      return [r('continues', { who: W(e.seat) })];
     case 'turn':
       if (e.seat === me) {
         if (e.phase === 'bidding') return [r('yourTurnBid')];
@@ -109,8 +115,9 @@ function resultScript(res: RoundResult, n: number, me: number | null, names: Nam
     case 'bidImpossible': out.push(r('stopBidImpossible', { who: side })); break;
     case 'coatFailed': out.push(r('stopCoatFailed', { who: side })); break;
     case 'challengeCoatFailed': out.push(r('stopChallengeFailed', { who: side })); break;
+    case 'selfCoatFailed': out.push(r('stopSelfFailed', { who: side })); break;
   }
-  const call = res.kind === 'challengeCoat' ? 'Challenge' : res.kind === 'coat' ? 'Coat' : 'Bid';
+  const call = res.kind === 'selfCoat' ? 'Self' : res.kind === 'challengeCoat' ? 'Challenge' : res.kind === 'coat' ? 'Coat' : 'Bid';
   out.push(r(res.success ? `made${call}` : `missed${call}`, { who: side }));
   res.awarded.forEach((a, t) => {
     if (a) out.push(r('side', { who: sideKey(t, n, me, names) }), r('plus', { plus: String(a) }));
@@ -125,10 +132,13 @@ export function voiceGuidance(v: PlayerView, names: Names, opts: { ready?: boole
   const Lg = v.legal;
   if (v.phase === 'matchOver') return [r(opts.isHost ? 'guideMatchOverHost' : 'guideMatchOver')];
   if (v.phase === 'roundOver') return [r(opts.ready ? 'guideReadyDone' : 'guideReady')];
+  if (v.sittingOut[me]) return [r('guideSittingOut')];
   if (v.turn !== me) return [r('waitingFor', { who: whoKey(v.turn, me, names) })];
+  if (v.phase === 'continueChoice') return [r('guideContinue')];
   if (v.phase === 'bidding') {
     const out = Lg.bidOptions.length ? [r('guideBid', { bid: String(Lg.bidOptions[0]) })] : [r('guideNoHigherBid')];
     if (Lg.canChallengeCoat) out.push(r('guideCanChallenge'));
+    if (Lg.canSelfCoat) out.push(r('guideCanSelfCoat'));
     return out;
   }
   if (v.phase === 'trumpSelect') return [r('guideTrump')];

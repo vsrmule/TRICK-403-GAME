@@ -85,7 +85,7 @@ const cleanName = (s: unknown) => (typeof s === 'string' ? s.replace(/\s+/g, ' '
 export function sanitizeSettings(base: RoomSettings, s: Partial<RoomSettings>): RoomSettings {
   const out = { ...base };
   if (s.numPlayers !== undefined) {
-    if (!PLAYER_COUNTS.includes(s.numPlayers as PlayerCount)) throw new RoomError('Seat count must be 2, 3, 4, 6 or 8');
+    if (!PLAYER_COUNTS.includes(s.numPlayers as PlayerCount)) throw new RoomError('Seat count must be 2, 3, 4, 6, 8 or 12');
     out.numPlayers = s.numPlayers;
   }
   if (s.matchTarget !== undefined) {
@@ -626,7 +626,7 @@ export class RoomManager {
       const a = botDecide(viewFor(g, seat));
       if (!a) break;
       g.apply(seat, a);
-    } while (!isBot && g.turn === seat && (g.phase === 'playing' || g.phase === 'bidding' || g.phase === 'trumpSelect') && ++guard < 5);
+    } while (!isBot && g.turn === seat && (g.phase === 'playing' || g.phase === 'bidding' || g.phase === 'trumpSelect' || g.phase === 'continueChoice') && ++guard < 5);
     this.flush(room, notice ? [notice] : []);
   }
 

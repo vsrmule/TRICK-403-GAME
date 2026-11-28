@@ -37,6 +37,7 @@ export function numTeams(numPlayers: number): number {
 export function bidRank(a: BidAction): number {
   if (a.type === 'bid') return a.value;
   if (a.type === 'challengeCoat') return 10_000;
+  if (a.type === 'selfCoat') return 20_000;
   return 0;
 }
 
@@ -93,6 +94,10 @@ export class Game304 {
   currentTrick: Trick | null = null;
   completedTricks: CompletedTrick[] = [];
   coat: CoatInfo | null = null;
+  /** The bid-reached Stop / Continue choice has been offered this round (it is offered once). */
+  continueOffered = false;
+  /** Who leads the next trick once the bidder has chosen to continue. */
+  private resumeLeader = -1;
 
   scores: number[];
   results: RoundResult[] = [];
@@ -102,7 +107,7 @@ export class Game304 {
   private pending: GameEvent[] = [];
 
   constructor(config: GameConfig, opts: GameOptions = {}) {
-    if (![2, 3, 4, 6, 8].includes(config.numPlayers)) throw new GameError('Unsupported player count');
+    if (![2, 3, 4, 6, 8, 12].includes(config.numPlayers)) throw new GameError('Unsupported player count');
     this.config = { ...config, fourCardMode: config.numPlayers === 4 && config.fourCardMode };
     this.options = { ...DEFAULT_RULE_OPTIONS, ...(config.options ?? {}) };
     this.n = config.numPlayers;
@@ -157,6 +162,8 @@ export class Game304 {
     this.currentTrick = null;
     this.completedTricks = [];
     this.coat = null;
+    this.continueOffered = false;
+    this.resumeLeader = -1;
     this.phase = 'bidding';
     this.turn = this.next(this.dealer);
     this.emit({ kind: 'roundStart', round: this.round, dealer: this.dealer, firstBidder: this.turn, cardsEach: this.cardsEach });
@@ -177,6 +184,12 @@ export class Game304 {
     if (action.type === 'challengeCoat' && this.phase !== 'bidding') {
       throw new GameError('Challenge Coat refused: it can only be called during bidding, before play starts');
     }
+    if (action.type === 'selfCoat' && this.phase !== 'bidding') {
+      throw new GameError('Self Coat refused: it can only be called during bidding');
+    }
+    if ((action.type === 'continueRound' || action.type === 'stopRound') && this.phase !== 'continueChoice') {
+      throw new GameError('There is no Stop or Continue choice right now');
+    }
     if (action.type === 'coat' && this.phase !== 'playing') {
       throw new GameError('Coat refused: it can only be called during play, when your side opens a trick');
     }
@@ -185,7 +198,12 @@ export class Game304 {
       case 'bid':
       case 'pass':
       case 'challengeCoat':
+      case 'selfCoat':
         return this.doBid(seat, action);
+      case 'continueRound':
+        return this.continueRound(seat);
+      case 'stopRound':
+        return this.stopRound(seat);
       case 'selectTrump':
         return this.selectTrump(seat, action.cardId);
       case 'askTrump':
@@ -208,9 +226,9 @@ export class Game304 {
     return v;
   }
 
-  /** Numeric bids the current bidder may make (empty once Challenge Coat is on). */
+  /** Numeric bids the current bidder may make (empty once Challenge Coat or Self Coat is on). */
   availableBids(): number[] {
-    if (this.highBid?.action.type === 'challengeCoat') return [];
+    if (this.highBid && this.highBid.action.type !== 'bid') return [];
     return bidsAbove(this.highestNumericBid());
   }
 
@@ -219,7 +237,20 @@ export class Game304 {
     if (this.phase !== 'bidding') return 'Challenge Coat can only be called during bidding';
     if (this.turn !== seat || this.passed[seat]) return 'Not your turn';
     if (this.highBid?.action.type === 'challengeCoat') return 'Challenge Coat has already been called';
+    if (this.highBid?.action.type === 'selfCoat') return 'Self Coat has already been called';
     // D1 (biddingSide): in bidding, the caller becomes the bidding side by calling — so any player may call on their turn.
+    return null;
+  }
+
+  /**
+   * Why `seat` may not call Self Coat now, or null if allowed. Like Challenge Coat it is a
+   * bidding call made on your turn; it outranks every bid and Challenge Coat, ends the bidding
+   * at once and makes the caller the bidder, so only one player can ever call it in a hand.
+   */
+  selfCoatBlock(seat: number): string | null {
+    if (this.phase !== 'bidding') return 'Self Coat can only be called during bidding';
+    if (this.turn !== seat || this.passed[seat]) return 'Not your turn';
+    if (this.highBid && this.highBid.action.type !== 'bid') return 'Self Coat has already been called';
     return null;
   }
 
@@ -235,6 +266,9 @@ export class Game304 {
     } else if (action.type === 'challengeCoat') {
       const block = this.challengeCoatBlock(seat);
       if (block) throw new GameError(block);
+    } else if (action.type === 'selfCoat') {
+      const block = this.selfCoatBlock(seat);
+      if (block) throw new GameError(block);
     }
 
     this.bids.push({ seat, action });
@@ -244,7 +278,7 @@ export class Game304 {
 
     const active = this.passed.map((p, i) => (p ? -1 : i)).filter((i) => i >= 0);
     const top = this.highBid?.action;
-    const nothingHigher = top?.type === 'challengeCoat';
+    const nothingHigher = top?.type === 'challengeCoat' || top?.type === 'selfCoat';
     if (this.highBid && (nothingHigher || active.length === 1)) return this.finishBidding();
     if (!this.highBid && active.length === 0) {
       this.redeals++;
@@ -262,9 +296,19 @@ export class Game304 {
     const a = hb.action;
     this.contract = {
       bidder: hb.seat,
-      type: a.type === 'challengeCoat' ? 'challengeCoat' : 'normal',
+      type: a.type === 'challengeCoat' ? 'challengeCoat' : a.type === 'selfCoat' ? 'selfCoat' : 'normal',
       value: a.type === 'bid' ? a.value : this.highestNumericBid() ?? RULES.bidding.min,
     };
+    if (this.contract.type === 'selfCoat') {
+      // Self Coat: no trump card is set aside, and the caller leads the first trick.
+      this.emit({ kind: 'biddingWon', seat: hb.seat, contract: { ...this.contract } });
+      this.phase = 'playing';
+      this.emit({ kind: 'firstLead', seat: hb.seat, bidder: hb.seat });
+      this.currentTrick = { index: 0, leader: hb.seat, plays: [] };
+      this.turn = hb.seat;
+      this.emit({ kind: 'turn', seat: hb.seat, phase: 'playing' });
+      return;
+    }
     this.phase = 'trumpSelect';
     this.turn = hb.seat;
     this.emit({ kind: 'biddingWon', seat: hb.seat, contract: { ...this.contract } });
@@ -289,6 +333,26 @@ export class Game304 {
     this.currentTrick = { index: 0, leader, plays: [] };
     this.turn = leader;
     this.emit({ kind: 'turn', seat: leader, phase: 'playing' });
+  }
+
+  /** Self Coat: the caller's teammates sit out the hand; their cards stay in their hands. */
+  sittingOut(seat: number): boolean {
+    const c = this.contract;
+    return !!c && c.type === 'selfCoat' && seat !== c.bidder && this.team(seat) === this.team(c.bidder);
+  }
+
+  /** Players who take part in tricks this hand. */
+  activePlayers(): number {
+    let k = 0;
+    for (let s = 0; s < this.n; s++) if (!this.sittingOut(s)) k++;
+    return k;
+  }
+
+  /** The next seat that plays, skipping anyone sitting out. */
+  nextActive(seat: number): number {
+    let t = this.next(seat);
+    while (this.sittingOut(t)) t = this.next(t);
+    return t;
   }
 
   /** Cards the seat may play from (the whole hand — nothing is ever set aside). */
@@ -374,6 +438,7 @@ export class Game304 {
     if (this.phase !== 'playing') return 'Coat refused: it can only be called during play';
     if (this.turn !== seat) return 'Not your turn';
     if (this.contract!.type === 'challengeCoat') return 'Coat refused: Challenge Coat is already on, every trick must be won';
+    if (this.contract!.type === 'selfCoat') return 'Coat refused: Self Coat is already on, every trick must be won';
     if (this.coat) return 'Coat refused: Coat has already been called this round';
     if (this.options.coatCallers === 'biddingSide' && this.team(seat) !== this.team(this.contract!.bidder)) {
       return 'Coat refused: only the bidding side can call Coat';
@@ -416,8 +481,8 @@ export class Game304 {
     if (this.trumpIndicator && card.id === this.trumpIndicator.id && !this.trumpRevealed)
       this.emit({ kind: 'youPlayedTrumpCard', seat, card, to: seat });
 
-    if (trick.plays.length === this.n) return this.resolveTrick();
-    this.turn = this.next(seat);
+    if (trick.plays.length === this.activePlayers()) return this.resolveTrick();
+    this.turn = this.nextActive(seat);
     this.emit({ kind: 'turn', seat: this.turn, phase: 'playing' });
   }
 
@@ -444,22 +509,48 @@ export class Game304 {
       captured,
       bid: contract.value,
       bidderTeam,
+      ...(contract.type === 'selfCoat' ? { selfCoat: true } : {}),
     });
 
     // CR v5 change 5: a failed Coat / Challenge Coat stops the round at once.
     if (contract.type === 'challengeCoat' && done.winnerTeam !== bidderTeam) return this.endRound('challengeCoatFailed');
+    if (contract.type === 'selfCoat' && done.winnerTeam !== bidderTeam) return this.endRound('selfCoatFailed');
     if (this.coat && done.index >= this.coat.fromTrick && done.winnerTeam !== this.coat.team) return this.endRound('coatFailed');
     if (this.completedTricks.length === this.cardsEach) return this.endRound(null);
     // CR v5 changes 1 and 4 — only while no Coat or Challenge Coat is active.
     if (contract.type === 'normal' && !this.coat) {
       const left = this.pointsInPlay - captured.reduce((a, b) => a + b, 0);
-      if (captured[bidderTeam] >= contract.value) return this.endRound('bidReached');
       if (captured[bidderTeam] + left < contract.value) return this.endRound('bidImpossible');
+      if (captured[bidderTeam] >= contract.value && !this.continueOffered) {
+        // Final update, part 3: the bidder chooses Stop (scored as before) or Continue (Coat stays open).
+        this.continueOffered = true;
+        this.resumeLeader = win.seat;
+        this.phase = 'continueChoice';
+        this.turn = contract.bidder;
+        this.emit({ kind: 'bidReached', seat: contract.bidder, team: bidderTeam, bid: contract.value });
+        this.emit({ kind: 'turn', seat: contract.bidder, phase: 'continueChoice' });
+        return;
+      }
     }
 
     this.currentTrick = { index: trick.index + 1, leader: win.seat, plays: [] };
     this.turn = win.seat;
     this.emit({ kind: 'turn', seat: win.seat, phase: 'playing' });
+  }
+
+  private continueRound(seat: number) {
+    if (seat !== this.contract!.bidder) throw new GameError('Only the bidder can choose to continue');
+    this.emit({ kind: 'continued', seat });
+    const last = this.completedTricks[this.completedTricks.length - 1];
+    this.phase = 'playing';
+    this.currentTrick = { index: last.index + 1, leader: this.resumeLeader, plays: [] };
+    this.turn = this.resumeLeader;
+    this.emit({ kind: 'turn', seat: this.turn, phase: 'playing' });
+  }
+
+  private stopRound(seat: number) {
+    if (seat !== this.contract!.bidder) throw new GameError('Only the bidder can choose to stop');
+    this.endRound('bidReached');
   }
 
   /** Card points captured so far this round, per team. */
@@ -486,7 +577,13 @@ export class Game304 {
     let success: boolean;
     let winPts: number;
     let losePts: number;
-    if (contract.type === 'challengeCoat') {
+    if (contract.type === 'selfCoat') {
+      kind = 'selfCoat';
+      caller = contract.bidder;
+      success = !endedEarly && this.completedTricks.length === this.cardsEach && this.completedTricks.every((t) => t.winnerTeam === bidderTeam);
+      winPts = RULES.selfCoat.win;
+      losePts = RULES.selfCoat.lose;
+    } else if (contract.type === 'challengeCoat') {
       kind = 'challengeCoat';
       caller = contract.bidder;
       success = !endedEarly && this.completedTricks.every((t) => t.winnerTeam === bidderTeam);

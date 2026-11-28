@@ -55,8 +55,13 @@ function opensTrick<G extends Game304>(g: G, seat: number): G {
   return g;
 }
 const playFirst = (g: Game304) => g.apply(g.turn, { type: 'play', cardId: g.legalCards(g.turn)[0].id });
+/** Play the round out; when the bid is reached the bidder chooses Stop (the old automatic stop). */
 function playOut(g: Game304) {
-  while (g.phase === 'playing') playFirst(g);
+  for (;;) {
+    if (g.phase === 'playing') playFirst(g);
+    else if (g.phase === 'continueChoice') g.apply(g.turn, { type: 'stopRound' });
+    else return;
+  }
 }
 const pass = (...seats: number[]) => seats.map((s) => [s, { type: 'pass' }] as [number, Action]);
 const bid = (seat: number, value: number) => [seat, { type: 'bid', value }] as [number, Action];
@@ -216,8 +221,10 @@ describe('normal bid scoring', () => {
 
 describe('CR v5: early stops (changes 1 and 4)', () => {
   // In the 8-player rig, trick 1 is worth 160 points and goes to Team A.
-  it('stops as soon as the bid is reached, scored as a normal made bid (acceptance 4)', () => {
+  it('bid reached: the bidder chooses; Stop ends the round, scored as a normal made bid (acceptance 4)', () => {
     const g = teamABids(160);
+    while (g.phase === 'playing') playFirst(g);
+    expect(g.phase).toBe('continueChoice');
     playOut(g);
     expect(g.completedTricks).toHaveLength(1);
     expect(g.lastResult).toMatchObject({ kind: 'normal', success: true, awarded: [1, 0], endedEarly: true, stopReason: 'bidReached', capturedPoints: [160, 0] });
@@ -818,9 +825,11 @@ function randomLegal(v: PlayerView, rng: () => number): Action | null {
     if (L.bidOptions.length) opts.push({ type: 'bid', value: pick(L.bidOptions.slice(0, 4)) });
     if (L.bidOptions.includes(304) && rng() < 0.2) opts.push({ type: 'bid', value: 304 });
     if (L.canChallengeCoat && rng() < 0.04) opts.push({ type: 'challengeCoat' });
+    if (L.canSelfCoat && rng() < 0.04) opts.push({ type: 'selfCoat' });
     return pick(opts);
   }
   if (v.phase === 'trumpSelect') return { type: 'selectTrump', cardId: pick(v.myHand).id };
+  if (v.phase === 'continueChoice') return rng() < 0.5 ? { type: 'continueRound' } : { type: 'stopRound' };
   if (v.phase === 'playing') {
     if (L.canAskTrump && rng() < 0.4) return { type: 'askTrump' };
     if (L.canRevealTrump && rng() < 0.2) return { type: 'revealTrump' };
@@ -857,20 +866,27 @@ function checkRound(g: Game304, before: number[]) {
   expect(r.capturedPoints).toEqual(cap);
   if (!r.endedEarly) {
     expect(g.completedTricks).toHaveLength(g.cardsEach);
-    expect(cap.reduce((a, b) => a + b, 0)).toBe(g.pointsInPlay);
+    // In Self Coat the caller's teammates keep their cards, so not every point is played.
+    if (r.kind !== 'selfCoat') expect(cap.reduce((a, b) => a + b, 0)).toBe(g.pointsInPlay);
   }
   // CR v5: why a round stops early is consistent with the result.
   if (r.stopReason === 'bidReached') expect(r.success && r.kind === 'normal').toBe(true);
   if (r.stopReason === 'bidImpossible') expect(!r.success && r.kind === 'normal').toBe(true);
   if (r.stopReason === 'coatFailed') expect(!r.success && r.kind === 'coat').toBe(true);
   if (r.stopReason === 'challengeCoatFailed') expect(!r.success && r.kind === 'challengeCoat').toBe(true);
+  if (r.stopReason === 'selfCoatFailed') expect(!r.success && r.kind === 'selfCoat').toBe(true);
   if (r.kind === 'normal' && r.stopReason === null) {
     // No early stop means the bid stayed open until the very last trick.
     expect(g.completedTricks).toHaveLength(g.cardsEach);
   }
   const band = bandOf(r.bidValue).id;
   let win: number, lose: number, success: boolean;
-  if (r.kind === 'challengeCoat') {
+  if (r.kind === 'selfCoat') {
+    [win, lose] = [10, 20];
+    success = !r.endedEarly && g.completedTricks.every((t) => t.winnerTeam === r.callerTeam);
+    // The caller's teammates never played a card.
+    for (const t of g.completedTricks) for (const p of t.plays) expect(p.seat === r.bidder || g.team(p.seat) !== r.callerTeam).toBe(true);
+  } else if (r.kind === 'challengeCoat') {
     [win, lose] = [6, 12];
     success = !r.endedEarly && g.completedTricks.every((t) => t.winnerTeam === r.callerTeam);
   } else if (r.kind === 'coat') {
@@ -941,7 +957,7 @@ describe('turn-by-turn instructions', () => {
   }
   it('bidding, trump choice, leading', () => {
     const g = setup();
-    expect(guidance(viewFor(g, 1), NAMES)).toBe('Bid 160 or higher, or pass. You can also call Challenge Coat.');
+    expect(guidance(viewFor(g, 1), NAMES)).toBe('Bid 160 or higher, or pass. You can also call Challenge Coat or Self Coat.');
     expect(guidance(viewFor(g, 2), NAMES)).toBe('Waiting for Arjun.');
     for (const s of [1, 2, 3]) g.apply(s, { type: 'pass' });
     g.apply(0, { type: 'bid', value: 300 });
@@ -1063,4 +1079,155 @@ describe('built-in voice: every announcement can be said with recorded clips', (
       }
     }, 120_000);
   }
+});
+
+// ------------------------------------------------------------------ Final update: Self Coat, 12 players, Continue choice
+
+describe('Self Coat', () => {
+  // 4 players, dealer 0: seat 1 bids first. Seat 1 (Team B) calls Self Coat; seat 3 is the teammate who sits out.
+  const ALL_WIN = ['AS 10S KS QS AH 10H', 'JS 9S JH 9H JC JD', 'KH QH 9C AC 10C KC', 'QC 9D AD 10D KD QD'];
+  const LOSES_FIRST = ['QH KH JS 9S AS 10S', 'JC 9C AC 10C KC QS', 'JH 9H AH 10H JD 9D', 'QC AD 10D KD QD KS'];
+  const selfCoat = (hands: string[]) => {
+    const g = new Game304(cfg(), { dealer: 0, rng: seededRng(2) });
+    rig(g, hands);
+    g.apply(1, { type: 'selfCoat' });
+    return g;
+  };
+
+  it('is a bidding call: ends the bidding, the caller leads trick 1, no trump card and no trump', () => {
+    const g = new Game304(cfg(), { dealer: 0, rng: seededRng(2) });
+    rig(g, LOSES_FIRST);
+    expect(viewFor(g, 1).legal!.canSelfCoat).toBe(true);
+    expect(viewFor(g, 2).legal!.canSelfCoat).toBe(false); // not their turn
+    g.apply(1, { type: 'selfCoat' });
+    expect(g.phase).toBe('playing'); // no trump selection
+    expect(g.contract).toMatchObject({ type: 'selfCoat', bidder: 1 });
+    expect(g.trumpSuit).toBeNull();
+    expect(g.turn).toBe(1);
+    expect(g.currentTrick!.leader).toBe(1);
+    // Only once per hand, and only during bidding.
+    expect(() => g.apply(1, { type: 'selfCoat' })).toThrow(/during bidding/);
+    for (let s = 0; s < 4; s++) expect(viewFor(g, s).legal!.canSelfCoat).toBe(false);
+  });
+
+  it('teammates sit out: never get a turn, their cards stay in hand', () => {
+    const g = selfCoat(ALL_WIN);
+    const turns = new Set<number>();
+    while (g.phase === 'playing') {
+      turns.add(g.turn);
+      expect(viewFor(g, g.turn).legal!.canAskTrump).toBe(false);
+      expect(viewFor(g, g.turn).legal!.canRevealTrump).toBe(false);
+      expect(viewFor(g, g.turn).legal!.coat.show).toBe(false);
+      playFirst(g);
+    }
+    expect([...turns].sort()).toEqual([0, 1, 2]);
+    expect(g.hands[3]).toHaveLength(6);
+    expect(viewFor(g, 3).sittingOut).toEqual([false, false, false, true]);
+    for (const t of g.completedTricks) expect(t.plays.map((p) => p.seat)).not.toContain(3);
+  });
+
+  it('caller wins every trick: +10 to the caller side', () => {
+    const g = selfCoat(ALL_WIN);
+    playOut(g);
+    expect(g.completedTricks).toHaveLength(6);
+    expect(g.lastResult).toMatchObject({ kind: 'selfCoat', success: true, awarded: [0, 10], stopReason: null });
+    expect(g.scores).toEqual([0, 10]);
+  });
+
+  it('caller loses a trick: the round stops at once, opponents +20, caller side loses nothing', () => {
+    const g = selfCoat(LOSES_FIRST);
+    g.apply(1, { type: 'play', cardId: 'QS' }); // Seat 0 holds the Jack of Spades
+    g.apply(2, { type: 'play', cardId: g.legalCards(2)[0].id });
+    g.apply(0, { type: 'play', cardId: 'JS' });
+    expect(g.completedTricks).toHaveLength(1);
+    expect(g.lastResult).toMatchObject({ kind: 'selfCoat', success: false, awarded: [20, 0], endedEarly: true, stopReason: 'selfCoatFailed' });
+    expect(g.scores).toEqual([20, 0]);
+  });
+
+  it('the highest card of the led suit wins (no trump)', () => {
+    const g = selfCoat(LOSES_FIRST);
+    g.apply(1, { type: 'play', cardId: 'JC' });
+    g.apply(2, { type: 'play', cardId: 'JD' }); // void in Clubs: a Jack of another suit does not win
+    g.apply(0, { type: 'play', cardId: 'JS' });
+    expect(g.completedTricks[0].winner).toBe(1);
+  });
+
+  it('Challenge Coat is unchanged: +6 / opponents +12', () => {
+    expect(RULES.challengeCoat).toEqual({ win: 6, lose: 12 });
+    expect(RULES.selfCoat).toEqual({ win: 10, lose: 20 });
+  });
+
+  it.each(PLAYER_COUNTS.map((n) => [n]))('works with %i players', (n) => {
+    for (let seed = 1; seed <= 6; seed++) {
+      const g = new Game304(cfg({ numPlayers: n as PlayerCount }), { rng: seededRng(seed), dealer: 0 });
+      const caller = g.turn;
+      g.apply(caller, { type: 'selfCoat' });
+      const teammates = Array.from({ length: n }, (_, s) => s).filter((s) => s !== caller && g.team(s) === g.team(caller));
+      if (n === 2 || n === 3) expect(teammates).toEqual([]);
+      expect(g.activePlayers()).toBe(n - teammates.length);
+      while (g.phase === 'playing') {
+        expect(teammates).not.toContain(g.turn);
+        g.apply(g.turn, botDecide(viewFor(g, g.turn))!);
+      }
+      for (const s of teammates) expect(g.hands[s]).toHaveLength(g.cardsEach);
+      const r = g.lastResult!;
+      expect(r.kind).toBe('selfCoat');
+      const others = r.awarded.filter((_, t) => t !== r.callerTeam);
+      if (r.success) expect(r.awarded[r.callerTeam]).toBe(10);
+      else expect(others.every((a) => a === 20) && r.awarded[r.callerTeam] === 0).toBe(true);
+    }
+  });
+});
+
+describe('12 players', () => {
+  it('two teams of six, 2 cards each, the whole deck dealt', () => {
+    const g = new Game304(cfg({ numPlayers: 12 }), { rng: seededRng(4) });
+    expect(g.cardsEach).toBe(2);
+    expect(g.hands.every((h) => h.length === 2)).toBe(true);
+    expect(g.pointsInPlay).toBe(304);
+    expect(g.teamCount).toBe(2);
+    expect(Array.from({ length: 12 }, (_, s) => g.team(s))).toEqual([0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]);
+    expect(PLAYER_COUNTS).toContain(12);
+  });
+});
+
+describe('bid reached: Stop or Continue (bidder only)', () => {
+  const NAMES8 = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  it('only the bidder is offered the choice; it is shown once', () => {
+    const g = teamABids(160);
+    g.drainEvents();
+    while (g.phase === 'playing') playFirst(g);
+    expect(g.phase).toBe('continueChoice');
+    expect(g.turn).toBe(0);
+    for (let s = 0; s < 8; s++) expect(viewFor(g, s).legal!.canChooseContinue).toBe(s === 0);
+    expect(() => g.apply(2, { type: 'continueRound' })).toThrow(); // a teammate does not decide
+    const ev = g.drainEvents().filter((e) => e.kind === 'bidReached');
+    expect(ev).toHaveLength(1);
+    // Said to the bidder as the question; to everyone else only as "waiting".
+    expect(describeEvent(ev[0], NAMES8, 0, viewFor(g, 0))!.text).toBe('Your team has already reached its bid. Would you like to continue the game?');
+    expect(describeEvent(ev[0], NAMES8, 1, viewFor(g, 1))!.text).not.toMatch(/continue/i);
+  });
+
+  it('Continue plays on, Coat stays available, and the choice is not offered again', () => {
+    const g = teamABids(160);
+    while (g.phase === 'playing') playFirst(g);
+    const winner = g.completedTricks[0].winner;
+    g.apply(0, { type: 'continueRound' });
+    expect(g.phase).toBe('playing');
+    expect(g.turn).toBe(winner);
+    expect(g.currentTrick!.index).toBe(1);
+    expect(viewFor(g, g.turn).legal!.coat).toMatchObject({ show: true, allowed: true });
+    g.apply(g.turn, { type: 'coat' });
+    playOut(g);
+    expect(g.completedTricks).toHaveLength(3);
+    expect(g.lastResult).toMatchObject({ kind: 'coat', success: true, awarded: [3, 0] });
+  });
+
+  it('Continue without Coat plays to the end and scores the made bid', () => {
+    const g = teamABids(160);
+    while (g.phase === 'playing') playFirst(g);
+    g.apply(0, { type: 'continueRound' });
+    while ((g.phase as string) === 'playing') playFirst(g);
+    expect(g.lastResult).toMatchObject({ kind: 'normal', success: true, awarded: [1, 0], stopReason: null });
+  });
 });

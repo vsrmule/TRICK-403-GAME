@@ -9,10 +9,10 @@ import os
 
 RANKS = [('J', 'Jack'), ('9', 'Nine'), ('A', 'Ace'), ('10', 'Ten'), ('K', 'King'), ('Q', 'Queen')]
 SUITS = [('S', 'Spades'), ('H', 'Hearts'), ('C', 'Clubs'), ('D', 'Diamonds')]
-BOTS = ['Asha', 'Ravi', 'Meera', 'Kiran', 'Devi', 'Arun', 'Lata', 'Vijay']
+BOTS = ['Asha', 'Ravi', 'Meera', 'Kiran', 'Devi', 'Arun', 'Lata', 'Vijay', 'Gita', 'Mohan', 'Usha', 'Sunil']
 
 who = {'you': 'You'}
-who.update({f's{i}': f'Seat {i}' for i in range(1, 9)})
+who.update({f's{i}': f'Seat {i}' for i in range(1, 13)})
 who.update({f'bot-{b.lower()}': f'Bot {b}' for b in BOTS})
 who.update({'team-a': 'Team A', 'team-b': 'Team B'})
 
@@ -28,7 +28,7 @@ SLOTS = {
     'num': {str(i): str(i) for i in range(0, 305)},
     'round': {str(i): str(i) for i in range(1, 151)},
     'count': {str(i): ('one card' if i == 1 else f'{i} cards') for i in range(1, 13)},
-    'plus': {str(i): str(i) for i in range(1, 13)},
+    'plus': {str(i): str(i) for i in range(1, 21)},
 }
 
 E, C, F = 'excited', 'cheerful', 'friendly'
@@ -66,6 +66,17 @@ PHRASES = [
     P('challengeCoat', W('{who} calls Challenge Coat!', 'You call Challenge Coat!'), 'Every trick must be won!', style=E),
     P('biddingWon', W('{who} wins the bid at', 'You win the bid at'), X('{bid}!')),
     P('biddingWonChallenge', W('{who} plays Challenge Coat!', 'You play Challenge Coat!'), style=E),
+    # Self Coat
+    P('selfCoat', W('{who} calls Self Coat!', 'You call Self Coat!'), 'Playing alone, with no trump. Every trick must be won!', style=E),
+    P('biddingWonSelf', W('{who} plays Self Coat!', 'You play Self Coat!'), 'No trump this hand.', style=E),
+    P('teammatesSitOut', 'The teammates sit out.'),
+    P('stopSelfFailed', 'Self Coat failed!', W('{who} lost a trick.', 'You lost a trick.'), style=E),
+    P('madeSelf', W('{who} did it! Self Coat made!', 'You did it! Self Coat made!'), style=E),
+    P('missedSelf', 'Stopped!', W('{who} missed the Self Coat.', 'You missed the Self Coat.'), style=E),
+    # Bid reached: Stop or Continue
+    P('bidReachedChoice', 'Your team has already reached its bid!', 'Would you like to continue the game?', style=E),
+    P('reachedBid', W('{who} reached the bid!', 'You reached the bid!'), style=E),
+    P('continues', W('{who} continues!', 'You continue!'), 'Play on!', style=E),
     # Trump
     P('trumpChosen', W('{who} has placed the trump card.', 'You have placed the trump card.'), 'It stays hidden.'),
     P('yourTrump', 'Your trump card is the {card}.'),
@@ -86,6 +97,7 @@ PHRASES = [
     P('roundScore', 'Round score:'),
     P('side', W('{who},', 'You,')),
     P('needs', W('{who} needs', 'You need'), '{bid}.'),
+    P('mustWinAll', W('{who} must win every trick!', 'You must win every trick!'), style=E),
     P('coatAccepted', 'Coat accepted!', style=E),
     P('needsEveryTrick', W('{who} needs every trick from here!', 'You need every trick from here!'), style=E),
     # Turns
@@ -115,6 +127,9 @@ PHRASES = [
     P('guideBid', 'Bid {bid} or higher, or pass.', style=F),
     P('guideNoHigherBid', 'No higher bid is left. Pass.', style=F),
     P('guideCanChallenge', 'You can also call Challenge Coat.', style=F),
+    P('guideCanSelfCoat', 'You can also call Self Coat.', style=F),
+    P('guideContinue', 'Choose Stop to end the round now, or Continue to play on.', style=F),
+    P('guideSittingOut', 'You sit out this hand. Your teammate plays Self Coat alone. Your cards stay in your hand.', style=F),
     P('guideTrump', 'Pick one card as your hidden trump card. Its suit becomes trump. Only you see it, and you can still play it.', style=F),
     P('guideLead', 'You lead this trick. Play any card from your hand.', style=F),
     P('guideCanCoat', 'You can also call Coat.', style=F),

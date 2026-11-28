@@ -330,6 +330,13 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         (Jaan 100); after 300 the only higher bid is 304. Once you pass you are out for the round. If everyone passes, the cards are dealt again. On your turn you
         may instead call Challenge Coat: your side must then win every trick of the round.
       </p>
+      <h3>Self Coat</h3>
+      <p>
+        On your turn in bidding you may call Self Coat, the biggest call. It ends the bidding and only one player can make it in a hand. You play alone: your
+        teammates sit out and keep their cards, and only you and the other side play. There is no trump (no hidden trump card, no asking or revealing). You lead
+        the first trick, and the highest card of the led suit wins each trick. You must win every trick: made +10 for your side; lose one trick and the round
+        stops at once, opponents +20.
+      </p>
       <h3>Choosing trump</h3>
       <p>
         The winning bidder places one card as the hidden trump card. Its suit is trump — the whole suit — but only the bidder can see the card. It stays playable:
@@ -348,8 +355,9 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       </p>
       <h3>Early stops</h3>
       <p>
-        Without a Coat or Challenge Coat, the round stops as soon as the bidding side has reached its bid (made), or can no longer reach it with the tricks left
-        (stopped). The round score is shown and spoken after every trick. Trump is the whole trump suit: every card of that suit is trump.
+        Without a Coat, Challenge Coat or Self Coat, the round stops as soon as the bidding side can no longer reach its bid with the tricks left (stopped). When
+        the bidding side reaches its bid, the bidder is asked once: "Your team has already reached its bid. Would you like to continue the game?" Stop ends the
+        round now (made). Continue plays on, so your side can still call Coat if it has won every trick so far. The round score is shown and spoken after every trick. Trump is the whole trump suit: every card of that suit is trump.
       </p>
       <h3>Scoring (game points)</h3>
       <ul className="list compact">
@@ -357,8 +365,9 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <li>Band 2 bids (Jaan, 200 up to 304): made +2; stopped, opponents +4.</li>
         <li>Coat: Band 1 made +3, stopped opponents +6. Band 2 made +5, stopped opponents +10.</li>
         <li>Challenge Coat: made +6; stopped, opponents +12. It replaces the bid scoring.</li>
+        <li>Self Coat: made +10; stopped, opponents +20. It replaces the bid scoring.</li>
       </ul>
-      <p>"Stopped" means the bidding side captured fewer card points than its bid. Teams sit in alternating seats (4, 6 and 8 players); with 3 players the bidder plays alone against the other two.</p>
+      <p>"Stopped" means the bidding side captured fewer card points than its bid. Players and cards: 2 players 12 cards each, 3 players 8, 4 players 6, 6 players 4, 8 players 3, 12 players 2. Teams sit in alternating seats (4, 6, 8 and 12 players); with 3 players the bidder plays alone against the other two.</p>
     </Dialog>
   );
 }

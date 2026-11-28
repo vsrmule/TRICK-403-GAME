@@ -27,8 +27,15 @@ export interface Catalog {
     bid: (who: string, bid: string) => string[];
     pass: (who: string) => string[];
     challengeCoat: (who: string) => string[];
+    selfCoat: (who: string) => string[];
     biddingWon: (who: string, bid: string) => string[];
     biddingWonChallenge: (who: string) => string[];
+    biddingWonSelf: (who: string, teamMode: boolean) => string[];
+    /** To the bidder: the bid is reached, Stop or Continue? */
+    bidReachedChoice: () => string[];
+    /** To everyone else while the bidder decides. */
+    bidReachedWait: (side: string, bid: string, bidder: string) => string[];
+    continued: (who: string) => string[];
     trumpChosen: (who: string) => string[];
     yourTrump: (card: string, suit: string) => string[];
     firstLead: (bidder: string, leader: string) => string[];
@@ -50,18 +57,23 @@ export interface Catalog {
     captured: (side: string, pts: number, bid: number) => string;
     /** Score line after every trick (CR v5 change 3). */
     roundScore: (line: string, side: string, bid: string) => string;
+    /** Self Coat: the running score, then what the caller must do. */
+    roundScoreSelfCoat: (line: string, caller: string) => string;
     /** Why the round stopped early (CR v5). */
     stopped: {
       bidReached: (side: string, bid: string) => string;
       bidImpossible: (side: string, bid: string) => string;
       coatFailed: (side: string) => string;
       challengeCoatFailed: (side: string) => string;
+      selfCoatFailed: (side: string) => string;
     };
     matchWon: (winner: string, line: string) => string[];
   };
   /** Turn-by-turn instructions: what you can do right now. */
   guide: {
-    bid: (lowest: string | null, challenge: boolean) => string;
+    bid: (lowest: string | null, challenge: boolean, selfCoat?: boolean) => string;
+    continueChoice: () => string;
+    sittingOut: (caller: string) => string;
     trump: () => string;
     lead: (coat: boolean) => string;
     follow: (suit: string, count: number, coat: boolean) => string;
@@ -119,8 +131,13 @@ const en: Catalog = {
     bid: (w, b) => [`${w} bid ${b}.`, `${vs(w, 'say')} ${b}.`, `${b}, from ${from(w)}.`],
     pass: (w) => [`${w} passed.`, `${vs(w, 'pass', 'passes')}.`],
     challengeCoat: (w) => [`${w} called Challenge Coat! Every trick must be won.`, `Challenge Coat from ${from(w)}! Every trick must be won.`],
+    selfCoat: (w) => [`${w} called Self Coat! ${vs(w, 'play')} alone, with no trump, and must win every trick.`],
     biddingWon: (w, b) => [`${w} won the bid at ${b}.`, `The bid goes to ${w}, at ${b}.`],
     biddingWonChallenge: (w) => [`${w} plays Challenge Coat.`],
+    biddingWonSelf: (w, team) => [`${w} ${w === 'You' ? 'play' : 'plays'} Self Coat. No trump this hand.${team ? ` ${w === 'You' ? 'Your' : `${w}'s`} teammates sit out.` : ''}`],
+    bidReachedChoice: () => ['Your team has already reached its bid. Would you like to continue the game?'],
+    bidReachedWait: (side, bid, b) => [`${side} reached the bid of ${bid}. Waiting for ${b}.`],
+    continued: (w) => [`${w} chose to continue. Play on!`],
     trumpChosen: (w) => [`${w} has placed the trump card.`, `${w} has placed the trump card. It stays hidden.`],
     yourTrump: (c, s) => [`You placed the ${c} as your trump card. Trump is ${s}. Only you know it. You can still play this card.`],
     firstLead: (b, l) => [`${b} ${b === 'You' ? 'are' : 'is'} the bidder. ${vs(l, 'lead')} the first trick.`],
@@ -147,19 +164,23 @@ const en: Catalog = {
     scores: (line) => `Scores: ${line}.`,
     captured: (side, p, b) => `${side} captured ${p} of ${b} needed.`,
     roundScore: (line, side, bid) => `Round score: ${line}. ${side} needs ${bid}.`,
+    roundScoreSelfCoat: (line, c) => `Round score: ${line}. ${c} must win every trick.`,
     stopped: {
       bidReached: (side, bid) => `Round stopped: ${side} reached the bid of ${bid}.`,
       bidImpossible: (side, bid) => `Round stopped: ${side} can no longer reach the bid of ${bid}.`,
       coatFailed: (side) => `Coat failed: ${side} lost a trick. Round stopped.`,
       challengeCoatFailed: (side) => `Challenge Coat failed: ${side} lost a trick. Round stopped.`,
+      selfCoatFailed: (side) => `Self Coat failed: ${side} lost a trick. Round stopped.`,
     },
     matchWon: (w, line) => [`Match over! ${w} wins. Final score ${line}.`, `${w} wins the match! Final score ${line}.`],
   },
   guide: {
-    bid: (lo, ch) =>
-      lo
-        ? `Bid ${lo} or higher, or pass.${ch ? ' You can also call Challenge Coat.' : ''}`
-        : `No higher bid is left. Pass${ch ? ', or call Challenge Coat' : ''}.`,
+    bid: (lo, ch, sc) => {
+      const calls = [ch && 'Challenge Coat', sc && 'Self Coat'].filter(Boolean).join(' or ');
+      return lo ? `Bid ${lo} or higher, or pass.${calls ? ` You can also call ${calls}.` : ''}` : `No higher bid is left. Pass${calls ? `, or call ${calls}` : ''}.`;
+    },
+    continueChoice: () => 'Your team has already reached its bid. Choose Stop to end the round now, or Continue to play on.',
+    sittingOut: (c) => `You sit out this hand: ${c} plays Self Coat alone. Your cards stay in your hand.`,
     trump: () => 'Pick one card as your hidden trump card. Its suit becomes trump. Only you see it, and you can still play it.',
     lead: (coat) => `You lead this trick. Play any card from your hand.${coat ? ' You can also call Coat.' : ''}`,
     follow: (suit, n, coat) => `Follow ${suit}. You have ${n} ${n === 1 ? 'card' : 'cards'} in ${suit}; play one of them.${coat ? ' You can also call Coat.' : ''}`,

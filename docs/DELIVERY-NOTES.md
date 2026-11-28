@@ -212,3 +212,35 @@ The controls are labelled buttons and sliders: Play/Pause, Back 10 s, Forward 10
 (read as "3 minutes 20 seconds of 17 minutes"), Mute, Volume and Full screen. Play, pause and
 seek changes are announced to the screen reader. Videos sit in `apps/web/public/media/<lang>/`
 (`tutorial.json` + the video file). The player's language is used, otherwise English.
+
+# Final update — Self Coat, 12 players, Continue choice
+
+## Self Coat
+- **How it is called (please confirm).** It works like Challenge Coat: a bidding call any player may make on their own turn in bidding, which makes them the
+  bidder. It outranks every bid and Challenge Coat and ends the bidding at once, so only one player can call it in a hand ("Call Self Coat" button, with a
+  confirmation; disabled for everyone once called).
+- The caller plays alone. The caller's teammates sit out: they never get a turn and their cards stay in their hands, hidden. No trump card is set aside;
+  Ask for trump, Reveal trump and Coat are off. The caller leads trick 1, and the highest card of the led suit wins.
+- Win every trick: caller's side +10. Lose one: the hand stops at once, opponents +20 (each opponent with 3 players), the caller's side loses nothing.
+  Bid value does not change it. The other early stops are off. Works with 2, 3, 4, 6, 8 and 12 players (with 2 or 3 players nobody sits out).
+- Shown and spoken: who called it, "No trump this hand", "teammates sit out", each trick winner, the running score after each trick ("… must win every
+  trick"), and the result with points. Seats show "Self Coat" / "Sitting out"; the sitting-out player's instructions say so.
+- Bots call Self Coat only with a hand of Jacks.
+
+## 12 players
+Two teams of six on alternating seats, 2 cards each, the whole deck dealt. Lobby, bots (four new bot names: Gita, Mohan, Usha, Sunil), voice ("Seat 9" … "Seat 12"),
+help and voice-chat relay all handle 12 seats. Coat with 2 tricks can only be called in trick 1 (never in the last trick), as the existing rule says.
+
+## Continue choice when the bid is reached
+- Bid can no longer be reached: unchanged, the round stops automatically.
+- Bid reached (normal bid, no Coat): the round pauses and only the bidder is asked "Your team has already reached its bid. Would you like to continue the
+  game?" with **Stop** and **Continue** (screen-reader group, spoken by the game voice). Everyone else hears only that the bid was reached and that they are
+  waiting for the bidder. Stop ends the round with the same scoring as before. Continue plays on: the next trick is led by the winner of the last trick, and
+  the bidding side can still call Coat if it has won every trick so far. The choice is shown once per round. If the bid is reached on the last trick there is
+  nothing to continue, so the round simply ends.
+- Bots and players on autopilot (turn timer, disconnect) choose Stop, which is the previous behaviour.
+
+## Tests
+140 automated tests pass, including: Self Coat calling rules, sitting out, no trump, +10 / +20 and the immediate stop, in every player count; 12-player deals
+and full matches; the Stop / Continue choice (bidder only, once, Stop = old scoring, Continue keeps Coat available). Checked in the browser: 12-player match,
+a Self Coat called from the bidding screen, and both Stop and Continue.

@@ -35,12 +35,14 @@ export function describeBid(a: BidAction, L: Catalog = catalog()): string {
     case 'bid': return `bid ${L.bidName(a.value)}`;
     case 'pass': return 'passed';
     case 'challengeCoat': return 'called Challenge Coat';
+    case 'selfCoat': return 'called Self Coat';
   }
 }
 
 export function describeContract(c: Contract, names: Names, me: number | null, L: Catalog = catalog()): string {
   const w = who(c.bidder, me, names, L);
   if (c.type === 'challengeCoat') return `${w}: Challenge Coat (must win every trick)`;
+  if (c.type === 'selfCoat') return `${w}: Self Coat (plays alone, no trump, must win every trick)`;
   return `${w}: bid ${L.bidName(c.value)}`;
 }
 
@@ -61,7 +63,7 @@ export function describeEvent(e: GameEvent, names: Names, me: number | null, v: 
 function describeEventText(e: GameEvent, names: Names, me: number | null, v: PlayerView, seed: number, L: Catalog): Spoken | null {
   const n = v.config.numPlayers;
   const W = (s: number) => who(s, me, names, L);
-  const teamMode = n === 4 || n === 6 || n === 8;
+  const teamMode = n === 4 || n === 6 || n === 8 || n === 12;
   // Your own actions are always said the plain way ("You played …"); variety is for others.
   if ('seat' in e && e.seat === me) seed = 0;
   switch (e.kind) {
@@ -72,8 +74,10 @@ function describeEventText(e: GameEvent, names: Names, me: number | null, v: Pla
     case 'bid':
       if (e.action.type === 'pass') return one(L.ev.pass(W(e.seat)), seed);
       if (e.action.type === 'challengeCoat') return one(L.ev.challengeCoat(W(e.seat)), seed);
+      if (e.action.type === 'selfCoat') return one(L.ev.selfCoat(W(e.seat)), seed);
       return one(L.ev.bid(W(e.seat), L.bidName(e.action.value)), seed);
     case 'biddingWon':
+      if (e.contract.type === 'selfCoat') return one(L.ev.biddingWonSelf(W(e.seat), teamMode), seed);
       return e.contract.type === 'challengeCoat'
         ? one(L.ev.biddingWonChallenge(W(e.seat)), seed)
         : one(L.ev.biddingWon(W(e.seat), L.bidName(e.contract.value)), seed);
@@ -96,11 +100,17 @@ function describeEventText(e: GameEvent, names: Names, me: number | null, v: Pla
       const won = L.ev.trickWon(W(e.seat), teamLabel(e.team, n, names, L), e.points, e.trickIndex + 1, teamMode);
       // CR v5 change 3: the score line follows every trick.
       const line = e.captured.map((c, t) => `${teamLabel(t, n, names, L)} ${c}`).join(', ');
-      const score = L.ev.roundScore(line, teamLabel(e.bidderTeam, n, names, L), L.bidName(e.bid));
+      const score = e.selfCoat
+        ? L.ev.roundScoreSelfCoat(line, teamLabel(e.bidderTeam, n, names, L))
+        : L.ev.roundScore(line, teamLabel(e.bidderTeam, n, names, L), L.bidName(e.bid));
       return { text: `${won[0]} ${score}`, voice: `${pick(won, seed)} ${score}` };
     }
     case 'coat':
       return one(L.ev.coat(W(e.seat), teamLabel(e.team, n, names, L)), seed);
+    case 'bidReached':
+      return e.seat === me ? one(L.ev.bidReachedChoice(), seed) : one(L.ev.bidReachedWait(teamLabel(e.team, n, names, L), L.bidName(e.bid), W(e.seat)), seed);
+    case 'continued':
+      return one(L.ev.continued(W(e.seat)), seed);
     case 'turn':
       if (e.seat === me) {
         if (e.phase === 'bidding') return one(L.ev.yourTurnBid(), seed);
@@ -110,7 +120,7 @@ function describeEventText(e: GameEvent, names: Names, me: number | null, v: Pla
       }
       if (e.phase === 'bidding') return one(L.ev.waitBid(names[e.seat]), seed);
       if (e.phase === 'trumpSelect') return one(L.ev.waitTrump(names[e.seat]), seed);
-      return null;
+      return null; // also continueChoice: said by the bidReached event
     case 'roundOver': {
       const r = describeResultParts(e.result, e.scores, names, n, L);
       const variants = (e.result.success ? L.ev.roundMade : L.ev.roundStopped)(r.side, r.call, r.gained);
@@ -131,7 +141,7 @@ export function scoreLine(scores: number[], names: Names, n: number, L: Catalog 
 
 function describeResultParts(r: RoundResult, scores: number[], names: Names, n: number, L: Catalog) {
   const side = teamLabel(r.callerTeam, n, names, L);
-  const call = r.kind === 'challengeCoat' ? 'Challenge Coat' : r.kind === 'coat' ? `Coat on ${L.bidName(r.bidValue)}` : `bid of ${L.bidName(r.bidValue)}`;
+  const call = r.kind === 'selfCoat' ? 'Self Coat' : r.kind === 'challengeCoat' ? 'Challenge Coat' : r.kind === 'coat' ? `Coat on ${L.bidName(r.bidValue)}` : `bid of ${L.bidName(r.bidValue)}`;
   const gained = r.awarded.map((a, t) => (a ? `${teamLabel(t, n, names, L)} +${a}` : null)).filter(Boolean).join(', ');
   const bidderSide = teamLabel(n === 3 ? r.bidder : r.bidder % 2, n, names, L);
   const captured = r.kind === 'normal' ? `${L.ev.captured(bidderSide, r.capturedPoints[n === 3 ? r.bidder : r.bidder % 2], r.bidValue)} ` : '';
@@ -148,6 +158,7 @@ export function stopText(r: RoundResult, names: Names, n: number, L: Catalog = c
     case 'bidImpossible': return `${L.ev.stopped.bidImpossible(side, bid)} `;
     case 'coatFailed': return `${L.ev.stopped.coatFailed(side)} `;
     case 'challengeCoatFailed': return `${L.ev.stopped.challengeCoatFailed(side)} `;
+    case 'selfCoatFailed': return `${L.ev.stopped.selfCoatFailed(side)} `;
   }
 }
 
@@ -220,8 +231,10 @@ export function guidance(v: PlayerView, names: Names, opts: { ready?: boolean; i
   const Lg = v.legal;
   if (v.phase === 'matchOver') return G.matchOver(!!opts.isHost);
   if (v.phase === 'roundOver') return opts.ready ? G.readyDone() : G.ready();
+  if (v.sittingOut[me] && v.contract) return G.sittingOut(names[v.contract.bidder] ?? `Seat ${v.contract.bidder + 1}`);
   if (v.turn !== me) return G.waiting(names[v.turn] ?? `Seat ${v.turn + 1}`);
-  if (v.phase === 'bidding') return G.bid(Lg.bidOptions.length ? L.bidName(Lg.bidOptions[0]) : null, Lg.canChallengeCoat);
+  if (v.phase === 'continueChoice') return G.continueChoice();
+  if (v.phase === 'bidding') return G.bid(Lg.bidOptions.length ? L.bidName(Lg.bidOptions[0]) : null, Lg.canChallengeCoat, Lg.canSelfCoat);
   if (v.phase === 'trumpSelect') return G.trump();
   const coat = Lg.coat.allowed;
   // Issue 6.4(b): remind the bidder they can reveal trump whenever they like.

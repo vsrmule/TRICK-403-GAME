@@ -111,7 +111,7 @@ export function sideName(room: RoomSnapshot, team: number) {
   return teamLabel(team, room.settings.numPlayers, names(room));
 }
 
-export const isTeamMode = (n: number) => n === 4 || n === 6 || n === 8;
+export const isTeamMode = (n: number) => n === 4 || n === 6 || n === 8 || n === 12;
 
 /** True inside the installed Android app (Capacitor), false on the website. */
 export const inNativeApp = () => !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();

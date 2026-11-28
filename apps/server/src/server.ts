@@ -170,7 +170,7 @@ export function startServer(opts: StartOptions = {}) {
     // Voice fallback: relay small µ-law audio packets when a direct WebRTC link can't be made.
     socket.on('vrelay', (p: { to?: unknown; d?: unknown }) => {
       const room = manager.roomOf(token);
-      if (!room || !Array.isArray(p?.to) || p.to.length > 8) return;
+      if (!room || !Array.isArray(p?.to) || p.to.length > 16) return; // up to 12 seats plus a few spectators
       const d = p.d;
       const size = d instanceof ArrayBuffer ? d.byteLength : Buffer.isBuffer(d) ? d.length : -1;
       if (size <= 0 || size > 8192) return;
