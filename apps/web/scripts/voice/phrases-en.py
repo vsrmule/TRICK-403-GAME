@@ -171,6 +171,7 @@ PHRASES = [
     P('stoppedTalking', 'Stopped talking.'),
     P('tenSeconds', '10 seconds left.', style=E),
     P('coatNotAvailable', 'Coat is not available now.'),
+    P('updateAvailable', 'A new version of Trick 304 is available. Choose Download update to install it.', style=F),
     P('testVoice', 'This is the game voice. Have a great game!', style=E),
 ]
 

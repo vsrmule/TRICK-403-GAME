@@ -298,6 +298,7 @@ export class RoomManager {
     const m = room.members.get(token);
     if (!m) return;
     m.sockets.delete(socketId);
+    this.clientFeatures.delete(socketId);
     if (m.voiceSocket === socketId) m.voiceSocket = null;
     if (m.sockets.size === 0) {
       m.lastSeen = Date.now();
@@ -573,6 +574,18 @@ export class RoomManager {
     return this.opts.botDelay ?? BOT_DELAY_MS[room.settings.botSpeed];
   }
 
+  /** Game features each connected client can show (see CLIENT_FEATURES in the web app). */
+  private clientFeatures = new Map<string, number>();
+  setClientFeatures(socketId: string, features: number) {
+    this.clientFeatures.set(socketId, features);
+  }
+  /** The best feature level among a member's open connections (0 = an app from before Self Coat). */
+  private featuresOf(m: Member): number {
+    let best = 0;
+    for (const s of m.sockets) best = Math.max(best, this.clientFeatures.get(s) ?? 0);
+    return best;
+  }
+
   private clearTimer(room: Room) {
     if (room.timer) clearTimeout(room.timer);
     room.timer = null;
@@ -603,6 +616,11 @@ export class RoomManager {
     }
     const m = s.token ? room.members.get(s.token) : undefined;
     const disconnected = !m || m.sockets.size === 0;
+    if (g.phase === 'continueChoice' && m && !disconnected && this.featuresOf(m) < 1) {
+      // An older installed app has no Stop / Continue buttons: stop as those apps always did.
+      room.timer = setTimeout(() => this.autoPlay(room, seat, `${m.name}'s app is an older version, so the round stopped at the bid. Update the app to get the Continue choice.`), 300);
+      return;
+    }
     let ms: number | null = room.settings.turnTimer > 0 ? room.settings.turnTimer * 1000 : null;
     if (disconnected) ms = Math.min(ms ?? Infinity, this.opts.disconnectGrace);
     if (ms !== null) {

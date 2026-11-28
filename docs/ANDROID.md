@@ -35,7 +35,21 @@ copy app\build\outputs\apk\debug\app-debug.apk ..\public\downloads\trick304.apk
 cd ..\..\..; npm run build          # so the server serves the new APK
 ```
 
-Raise `versionCode` / `versionName` in `android/app/build.gradle` for each release.
+Raise `versionCode` / `versionName` in `android/app/build.gradle` for each release. That is the
+only place: the app carries the number built in, and the website build publishes it at
+`/downloads/version.json`.
+
+## How players get updates
+
+From version 1.4 the app checks `/downloads/version.json` at launch, when it comes back to the
+foreground, and every 30 minutes. When the website has a newer APK it shows (and announces)
+"A new version of Trick 304 is available" with **Download update**, which opens the APK in the
+phone's browser; installing it over the app keeps the player's settings. Apps older than 1.4
+can't show this, so those players need to download the new APK once by hand.
+
+Older apps that can't show newer game choices keep working: each app tells the server which
+features it supports, and for an app from before the Stop / Continue choice the server chooses
+Stop for it (the earlier behaviour) and tells the table.
 
 ## Changing the server address
 

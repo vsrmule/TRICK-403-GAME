@@ -1637,6 +1637,15 @@
    ]
   },
   {
+   "id": "updateAvailable",
+   "chunks": [
+    {
+     "text": "A new version of Trick 304 is available. Choose Download update to install it."
+    }
+   ],
+   "style": "friendly"
+  },
+  {
    "id": "testVoice",
    "chunks": [
     {

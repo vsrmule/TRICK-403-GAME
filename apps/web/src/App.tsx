@@ -14,6 +14,7 @@ import { Home } from './components/Home';
 import { Intro } from './components/Intro';
 import { VideoPanel } from './components/Video';
 import { Lobby } from './components/Lobby';
+import { UpdateBanner } from './components/UpdateBanner';
 import { Table } from './components/Table';
 import { BrandMark, Dialog, Icon, ToolButton, act, names } from './components/ui';
 
@@ -283,6 +284,7 @@ export function App() {
       <a href="#main" className="skip">
         Skip to main content
       </a>
+      <UpdateBanner />
       {room && (
         <header className={`shell${room.status === 'playing' ? ' playing' : ''}`} role="banner">
           <span className="brand">

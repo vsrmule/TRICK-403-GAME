@@ -53,6 +53,11 @@ function staticHandler(root: string | null) {
     if (IMMUTABLE.test(urlPath)) headers['cache-control'] = 'public, max-age=31536000, immutable';
     else if (extname(file) !== '.html') headers['cache-control'] = 'public, max-age=3600';
     if (extname(file) === '.apk') headers['content-disposition'] = 'attachment; filename="Trick304.apk"';
+    // The Android app (origin https://localhost) reads this to offer updates; always fresh.
+    if (urlPath === '/downloads/version.json') {
+      headers['cache-control'] = 'no-cache';
+      headers['access-control-allow-origin'] = '*';
+    }
     // Byte ranges: video seeking (and Safari, which won't play media without them).
     const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
     if (range && (range[1] || range[2])) {
@@ -110,6 +115,9 @@ export function startServer(opts: StartOptions = {}) {
       return;
     }
     tokenOf.set(socket.id, token);
+    // Which game features this client can show (apps installed before Self Coat send nothing).
+    const features = typeof (auth as { features?: unknown }).features === 'number' ? (auth as { features: number }).features : 0;
+    manager.setClientFeatures(socket.id, features);
 
     /** Wrap a handler so thrown rule errors become { ok:false } acks instead of crashes. */
     const on = <P>(event: string, fn: (payload: P) => unknown) => {

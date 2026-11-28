@@ -244,3 +244,8 @@ help and voice-chat relay all handle 12 seats. Coat with 2 tricks can only be ca
 140 automated tests pass, including: Self Coat calling rules, sitting out, no trump, +10 / +20 and the immediate stop, in every player count; 12-player deals
 and full matches; the Stop / Continue choice (bidder only, once, Stop = old scoring, Continue keeps Coat available). Checked in the browser: 12-player match,
 a Self Coat called from the bidding screen, and both Stop and Continue.
+
+## App updates (Android 1.4)
+- The app now tells players when a newer APK is on the website ("A new version of Trick 304 is available" with Download update and Later),
+  checked at launch, on returning to the app and every 30 minutes. Apps before 1.4 can't show it: those players update by hand once.
+- Older apps that lack the Stop / Continue buttons can't hold up a game: the server chooses Stop for them, as before, and says why.

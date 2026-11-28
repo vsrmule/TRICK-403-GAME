@@ -332,3 +332,55 @@ describe('text chat and reactions', () => {
     expect(u.room.chat.find((c) => c.id === msg.id)!.reactions?.['😂']).toBeUndefined();
   });
 });
+
+describe('older installed apps and the Stop / Continue choice', () => {
+  /** One human (bidding whenever possible) + 3 bots; resolves with the first bid-reached moment for the human. */
+  async function humanReachesBid(features: number | undefined) {
+    const token = `feat-${features}-${++n}-${Date.now()}`;
+    const socket = connect(url, { auth: features === undefined ? { token } : { token, features }, transports: ['websocket'], forceNew: true });
+    sockets.push(socket);
+    await new Promise((r) => socket.on('connect', r));
+    const call = (ev: string, p: object = {}) => new Promise<{ ok: boolean; data?: string }>((r) => socket.emit(ev, p, r));
+    const code = (await call('createRoom', { name: 'Old', settings: { numPlayers: 4, matchTarget: 100 } })).data!;
+    expect(code).toMatch(/^\d{6}$/);
+    await call('fillBots');
+    const updates: RoomUpdate[] = [];
+    const seen = new Promise<RoomUpdate>((resolve) => {
+      socket.on('room', (u: RoomUpdate | null) => {
+        if (!u?.room.view) return;
+        updates.push(u);
+        const v = u.room.view;
+        if (v.phase === 'continueChoice' && v.turn === v.seat) return resolve(u); // never answer it here
+        if (v.phase === 'roundOver' && v.seat !== null && !u.room.ready.includes(v.seat)) void call('ready');
+        if (v.seat !== null && v.turn === v.seat) {
+          // Bid the lowest value whenever possible, so this player is often the bidder.
+          const a = v.phase === 'bidding' && v.legal!.bidOptions.length ? { type: 'bid', value: v.legal!.bidOptions[0] } : botDecide(v);
+          if (a) void call('action', { action: a });
+        }
+      });
+    });
+    await call('start');
+    const at = await seen;
+    return { socket, call, updates, at };
+  }
+
+  it('an app from before the choice (no feature level) is stopped for automatically, as before', async () => {
+    const { socket, updates, at } = await humanReachesBid(undefined);
+    const since = updates.length;
+    await new Promise((r) => setTimeout(r, 1500));
+    const after = updates.slice(since);
+    expect(after.some((u) => u.events.some((e) => e.kind === 'roundOver' && e.result.stopReason === 'bidReached'))).toBe(true);
+    expect(after.some((u) => u.notices.some((t) => /older version/.test(t)))).toBe(true);
+    expect(at.room.view!.phase).toBe('continueChoice');
+    socket.disconnect();
+  }, 60000);
+
+  it('a current app gets the choice and the game waits for it', async () => {
+    const { socket, call, updates } = await humanReachesBid(1);
+    const since = updates.length;
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(updates.slice(since).some((u) => u.events.some((e) => e.kind === 'roundOver'))).toBe(false);
+    expect((await call('action', { action: { type: 'continueRound' } })).ok).toBe(true);
+    socket.disconnect();
+  }, 60000);
+});

@@ -6,7 +6,7 @@
     "androidScheme": "https",
     "hostname": "localhost"
   },
-  "appendUserAgent": "Trick304App/1.3",
+  "appendUserAgent": "Trick304App/1.4",
   "android": {
     "backgroundColor": "#0A0F1C",
     "allowMixedContent": false

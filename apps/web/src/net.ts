@@ -1,11 +1,11 @@
 import { useSyncExternalStore } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { RoomUpdate } from '@g304/engine';
-import { SERVER_URL } from './config';
+import { APP_VERSION, CLIENT_FEATURES, SERVER_URL } from './config';
 import { sessionToken } from './prefs';
 
 export const socket: Socket = io(SERVER_URL ?? '/', {
-  auth: { token: sessionToken() },
+  auth: { token: sessionToken(), features: CLIENT_FEATURES, app: APP_VERSION.code },
   transports: ['websocket', 'polling'],
 });
 
