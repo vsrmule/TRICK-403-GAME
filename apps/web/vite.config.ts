@@ -4,16 +4,13 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 /**
- * The Android app's version, from android/app/build.gradle (the one place to raise it).
- * The app carries it built in; the website publishes it at /downloads/version.json, and
- * the app compares the two to tell players when a newer APK is available.
+ * The Android app's version, from app-version.json (the one place to raise it; the Android
+ * build reads it too). The app carries it built in; the website publishes it at
+ * /downloads/version.json, and the app compares the two to tell players when a newer APK exists.
  */
 function appVersion() {
-  const gradle = readFileSync(resolve(__dirname, 'android/app/build.gradle'), 'utf8');
-  return {
-    code: Number(/versionCode\s+(\d+)/.exec(gradle)?.[1] ?? 0),
-    name: /versionName\s+"([^"]+)"/.exec(gradle)?.[1] ?? '0',
-  };
+  const v = JSON.parse(readFileSync(resolve(__dirname, 'app-version.json'), 'utf8')) as { versionCode: number; versionName: string };
+  return { code: v.versionCode, name: v.versionName };
 }
 
 /**

@@ -1,5 +1,8 @@
 apply plugin: 'com.android.application'
 
+// The app version lives in apps/web/app-version.json (also read by the website build).
+def appVersion = new groovy.json.JsonSlurper().parse(file('../../app-version.json'))
+
 android {
     namespace "com.trick304.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,8 +10,8 @@ android {
         applicationId "com.trick304.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "1.4"
+        versionCode appVersion.versionCode as int
+        versionName appVersion.versionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

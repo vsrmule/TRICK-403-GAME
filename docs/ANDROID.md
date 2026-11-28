@@ -35,8 +35,8 @@ copy app\build\outputs\apk\debug\app-debug.apk ..\public\downloads\trick304.apk
 cd ..\..\..; npm run build          # so the server serves the new APK
 ```
 
-Raise `versionCode` / `versionName` in `android/app/build.gradle` for each release. That is the
-only place: the app carries the number built in, and the website build publishes it at
+Raise `versionCode` / `versionName` in `apps/web/app-version.json` for each release. That is the
+only place (the Android build reads it too): the app carries the number built in, and the website build publishes it at
 `/downloads/version.json`.
 
 ## How players get updates
